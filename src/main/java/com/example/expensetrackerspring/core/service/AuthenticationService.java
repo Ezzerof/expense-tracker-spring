@@ -1,10 +1,10 @@
 package com.example.expensetrackerspring.core.service;
 
-import com.example.expensetrackerspring.core.persistance.entity.User;
 import com.example.expensetrackerspring.rest.payload.request.SignInRequest;
 import com.example.expensetrackerspring.rest.payload.request.SignUpRequest;
+import com.example.expensetrackerspring.rest.payload.response.SignInResponse;
 
 public interface AuthenticationService {
     void userSignUp(SignUpRequest signUpRequest);
-    User authenticate(SignInRequest signInRequest);
+    SignInResponse userSignIn(SignInRequest signInRequest);
 }

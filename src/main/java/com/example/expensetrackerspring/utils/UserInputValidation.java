@@ -1,12 +1,11 @@
 package com.example.expensetrackerspring.utils;
 
-import com.example.expensetrackerspring.core.persistance.entity.User;
 import com.example.expensetrackerspring.rest.payload.request.SignUpRequest;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class RegisterValidation {
+public class UserInputValidation {
 
     public static boolean validateUser(SignUpRequest signUpRequest) {
         return isFirstNameValid(signUpRequest.firstName()) &&

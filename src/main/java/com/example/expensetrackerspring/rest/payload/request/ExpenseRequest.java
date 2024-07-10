@@ -1,8 +1,7 @@
 package com.example.expensetrackerspring.rest.payload.request;
 
-import com.example.expensetrackerspring.core.Category;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
-import java.time.LocalDateTime;
-
-public record ExpenseRequest(String name, String description, Category category, LocalDateTime dateTime) {
+public record ExpenseRequest(String name, String description, BigDecimal amount, String category, LocalDate date) {
 }
