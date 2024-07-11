@@ -2,18 +2,21 @@ package com.example.expensetrackerspring.core.persistance.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Entity
+@Data
 public class Expense {
     @Id
-    int id;
-    String name;
-    String description;
-    String category;
-    float amount;
-    LocalDateTime payDate;
+    private Long id;
+    private String name;
+    private String description;
+    private String category;
+    private BigDecimal amount;
+    private LocalDate date;
 
 
 }
