@@ -54,11 +54,13 @@ public class ExpenseServiceImpl implements ExpenseService {
             throw new InvalidExpenseDetailsException("Invalid expense details");
         }
 
-        if (repository.findById(getExpenseRequest.id()).isEmpty()) {
+        Optional<Expense> expenseOptional = repository.findById(getExpenseRequest.id());
+
+        if (expenseOptional.isEmpty()) {
             throw new ExpenseNotFoundException("Expense not found");
         }
 
-        Expense expense = repository.findById(getExpenseRequest.id()).get();
+        Expense expense = expenseOptional.get();
         ExpenseResponse expenseResponse = new ExpenseResponse(
                 expense.getId(),
                 expense.getName(),
@@ -84,7 +86,7 @@ public class ExpenseServiceImpl implements ExpenseService {
         }
 
         Expense expense = repository.findById(request.id())
-                .orElseThrow(() -> new InvalidCredentialException("Invalid id"));
+                .orElseThrow(() -> new ExpenseNotFoundException("Expense not found"));
 
         repository.delete(expense);
         return new RemoveExpenseResponse(true, "Expense removed");
