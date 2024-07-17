@@ -61,15 +61,7 @@ public class ExpenseServiceImpl implements ExpenseService {
         }
 
         Expense expense = expenseOptional.get();
-        ExpenseResponse expenseResponse = new ExpenseResponse(
-                expense.getId(),
-                expense.getName(),
-                expense.getDescription(),
-                expense.getAmount(),
-                expense.getCategory(),
-                expense.getDate()
-        );
-
+        ExpenseResponse expenseResponse = convertToDto(expense);
         return Optional.of(expenseResponse);
     }
 
