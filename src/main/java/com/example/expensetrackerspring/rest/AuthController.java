@@ -5,17 +5,22 @@ import com.example.expensetrackerspring.core.exceptions.UserNotFoundException;
 import com.example.expensetrackerspring.core.service.AuthenticationService;
 import com.example.expensetrackerspring.rest.payload.request.SignInRequest;
 import com.example.expensetrackerspring.rest.payload.request.SignUpRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController("/api/v1/auth")
+@RestController
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
     private final AuthenticationService authenticationService;
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     @Autowired
     public AuthController(AuthenticationService authenticationService) {
@@ -23,22 +28,26 @@ public class AuthController {
     }
 
     @PostMapping("/sign-up")
-    public ResponseEntity<?> signUp(@RequestBody SignUpRequest signUpRequest) {
+    public ResponseEntity<String> signUp(@RequestBody SignUpRequest signUpRequest) {
         try {
             authenticationService.userSignUp(signUpRequest);
+            logger.info("User signed up successfully");
+            return ResponseEntity.status(HttpStatus.CREATED).build();
         } catch (InvalidCredentialException e) {
+            logger.error("Invalid credentials during sign-up", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid credentials");
         }
-        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @PostMapping("/sign-in")
-    public ResponseEntity<?> signIn(@RequestBody SignInRequest signInRequest) {
+    public ResponseEntity<String> signIn(@RequestBody SignInRequest signInRequest) {
         try {
             authenticationService.userSignIn(signInRequest);
+            logger.info("User signed in successfully");
             return ResponseEntity.ok().build();
         } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid credentials");
+            logger.error("User not found during sign-in", e);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("User not found");
         }
     }
 }
