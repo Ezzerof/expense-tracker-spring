@@ -71,6 +71,26 @@ public class ExpenseServiceImpl implements ExpenseService {
         Page<Expense> expensePage = repository.findAll(pageable);
         return expensePage.map(this::convertToDto);
     }
+    @Transactional
+    @Override
+    public Optional<ExpenseResponse> editExpense(ExpenseRequest expenseRequest) {
+        if (expenseRequest == null || expenseRequest.name() == null || expenseRequest.amount() == null) {
+            throw new InvalidExpenseDetailsException("Invalid expense details");
+        }
+
+        Expense expense = repository.findByName(expenseRequest.name()).orElseThrow(
+                () -> new ExpenseNotFoundException("Expense not found")
+        );
+
+        expense.setName(expenseRequest.name());
+        expense.setDate(expenseRequest.date());
+        expense.setCategory(expenseRequest.category());
+        expense.setDescription(expenseRequest.description());
+        expense.setAmount(expenseRequest.amount());
+        repository.save(expense);
+
+        return Optional.of(convertToDto(expense));
+    }
 
     @Override
     public RemoveExpenseResponse deleteExpense(RemoveExpenseRequest request) {
@@ -86,7 +106,7 @@ public class ExpenseServiceImpl implements ExpenseService {
     }
 
     private boolean expenseExists(String expenseName) {
-        return repository.getExpenseByName(expenseName).isPresent();
+        return repository.findByName(expenseName).isPresent();
     }
 
     private ExpenseResponse convertToDto(Expense expense) {
