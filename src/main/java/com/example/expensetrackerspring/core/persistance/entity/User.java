@@ -5,11 +5,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
+
 @Entity
 @Data
 @Builder
 @AllArgsConstructor
 @Table(name="users")
+
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,8 +20,4 @@ public class User {
     private String username;
     private String password;
     private String email;
-
-    public User() {
-
-    }
 }

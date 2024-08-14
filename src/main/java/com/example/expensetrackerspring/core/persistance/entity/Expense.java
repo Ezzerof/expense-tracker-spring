@@ -22,9 +22,4 @@ public class Expense {
     private String category;
     private BigDecimal amount;
     private LocalDate date;
-
-    public Expense() {
-
-    }
-
 }
