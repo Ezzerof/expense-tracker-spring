@@ -18,7 +18,7 @@ public interface ExpenseService {
 
     Page<ExpenseResponse> getAllExpenses(Pageable pageable, Long userId);
 
-    Optional<ExpenseResponse> editExpense(ExpenseRequest expenseRequest, Long userId);
+    Optional<ExpenseResponse> editExpense(Long id, ExpenseRequest expenseRequest, Long userId);
 
     RemoveExpenseResponse deleteExpense(RemoveExpenseRequest request, Long userId);
 }

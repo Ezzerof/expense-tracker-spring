@@ -92,7 +92,7 @@ public class ExpenseController {
     @PutMapping("/{id}")
     public ResponseEntity<?> editExpense(@PathVariable Long id, @RequestBody ExpenseRequest expenseRequest, @AuthenticationPrincipal User user) {
         try {
-            ExpenseResponse updatedExpense = expenseService.editExpense(expenseRequest, user.getId()).orElseThrow(() ->
+            ExpenseResponse updatedExpense = expenseService.editExpense(id, expenseRequest, user.getId()).orElseThrow(() ->
                     new ExpenseNotFoundException("Expense not found or access denied"));
             logger.info("Expense {} updated successfully by user {}", id, user.getUsername());
             return ResponseEntity.ok(updatedExpense);

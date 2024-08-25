@@ -82,12 +82,12 @@ public class ExpenseServiceImpl implements ExpenseService {
     }
     @Transactional
     @Override
-    public Optional<ExpenseResponse> editExpense(ExpenseRequest expenseRequest, Long userId) {
+    public Optional<ExpenseResponse> editExpense(Long id, ExpenseRequest expenseRequest, Long userId) {
         if (expenseRequest == null || expenseRequest.name() == null || expenseRequest.amount() == null) {
             throw new InvalidExpenseDetailsException("Invalid expense details");
         }
 
-        Expense expense = expenseRepository.findByIdAndUserId(expenseRequest.id(), userId).orElseThrow(
+        Expense expense = expenseRepository.findByIdAndUserId(id, userId).orElseThrow(
                 () -> new ExpenseNotFoundException("Expense not found or access denied")
         );
 
