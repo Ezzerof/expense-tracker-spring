@@ -12,13 +12,13 @@ import org.springframework.data.domain.Pageable;
 import java.util.Optional;
 
 public interface ExpenseService {
-    SaveExpenseResponse saveExpense(ExpenseRequest expenseRequest);
+    SaveExpenseResponse saveExpense(ExpenseRequest expenseRequest, Long userId);
 
-    Optional<ExpenseResponse> getExpense(GetExpenseRequest getExpenseRequest);
+    Optional<ExpenseResponse> getExpense(GetExpenseRequest getExpenseRequest, Long userId);
 
-    Page<ExpenseResponse> getAllExpenses(Pageable pageable);
+    Page<ExpenseResponse> getAllExpenses(Pageable pageable, Long userId);
 
-    Optional<ExpenseResponse> editExpense(ExpenseRequest expenseRequest);
+    Optional<ExpenseResponse> editExpense(ExpenseRequest expenseRequest, Long userId);
 
-    RemoveExpenseResponse deleteExpense(RemoveExpenseRequest request);
+    RemoveExpenseResponse deleteExpense(RemoveExpenseRequest request, Long userId);
 }
