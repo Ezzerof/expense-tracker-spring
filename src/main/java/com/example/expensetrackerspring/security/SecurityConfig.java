@@ -25,12 +25,15 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
-    private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public SecurityConfig(CustomUserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+    public SecurityConfig(CustomUserDetailsService userDetailsService) {
         this.userDetailsService = userDetailsService;
-        this.passwordEncoder = passwordEncoder;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -52,14 +55,10 @@ public class SecurityConfig {
         return new ProviderManager(Arrays.asList(
                 new DaoAuthenticationProvider() {{
                     setUserDetailsService(userDetailsService);
-                    setPasswordEncoder(passwordEncoder);
+                    setPasswordEncoder(passwordEncoder());
                 }}
         ));
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
 }
 
