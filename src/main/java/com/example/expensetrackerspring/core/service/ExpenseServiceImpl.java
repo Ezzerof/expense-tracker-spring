@@ -1,11 +1,10 @@
 package com.example.expensetrackerspring.core.service;
 
-import com.example.expensetrackerspring.core.exceptions.DuplicateExpenseException;
-import com.example.expensetrackerspring.core.exceptions.ExpenseNotFoundException;
-import com.example.expensetrackerspring.core.exceptions.InvalidCredentialException;
-import com.example.expensetrackerspring.core.exceptions.InvalidExpenseDetailsException;
+import com.example.expensetrackerspring.core.exceptions.*;
 import com.example.expensetrackerspring.core.persistance.entity.Expense;
+import com.example.expensetrackerspring.core.persistance.entity.User;
 import com.example.expensetrackerspring.core.persistance.repository.ExpenseRepository;
+import com.example.expensetrackerspring.core.persistance.repository.UserRepository;
 import com.example.expensetrackerspring.rest.payload.request.ExpenseRequest;
 import com.example.expensetrackerspring.rest.payload.request.GetExpenseRequest;
 import com.example.expensetrackerspring.rest.payload.request.RemoveExpenseRequest;
@@ -21,16 +20,22 @@ import java.util.Optional;
 @Service
 public class ExpenseServiceImpl implements ExpenseService {
 
-    private final ExpenseRepository repository;
+    private final ExpenseRepository expenseRepository;
+    private final UserRepository userRepository;
 
-    public ExpenseServiceImpl(ExpenseRepository repository) {
-        this.repository = repository;
+    public ExpenseServiceImpl(ExpenseRepository expenseRepository, UserRepository userRepository) {
+        this.expenseRepository = expenseRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
     @Transactional
-    public SaveExpenseResponse saveExpense(ExpenseRequest expenseRequest) {
-        if (expenseRequest == null || expenseRequest.name() == null || expenseRequest.amount() == null) {
+    public SaveExpenseResponse saveExpense(ExpenseRequest expenseRequest, Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+
+        if (expenseRequest.name() == null || expenseRequest.amount() == null) {
             throw new InvalidExpenseDetailsException("Invalid expense details");
         }
 
@@ -38,7 +43,8 @@ public class ExpenseServiceImpl implements ExpenseService {
             throw new DuplicateExpenseException("Expense already exists");
         }
 
-        repository.save(Expense.builder()
+        expenseRepository.save(Expense.builder()
+                .user(user)
                 .name(expenseRequest.name())
                 .description(expenseRequest.description())
                 .amount(expenseRequest.amount())
@@ -50,36 +56,39 @@ public class ExpenseServiceImpl implements ExpenseService {
     }
 
     @Override
-    public Optional<ExpenseResponse> getExpense(GetExpenseRequest getExpenseRequest) {
-        if (getExpenseRequest == null) {
-            throw new InvalidExpenseDetailsException("Invalid expense details");
-        }
-
-        Optional<Expense> expenseOptional = repository.findById(getExpenseRequest.id());
-
-        if (expenseOptional.isEmpty()) {
-            throw new ExpenseNotFoundException("Expense not found");
-        }
-
-        Expense expense = expenseOptional.get();
-        ExpenseResponse expenseResponse = convertToDto(expense);
-        return Optional.of(expenseResponse);
+    public Optional<ExpenseResponse> getExpense(GetExpenseRequest getExpenseRequest, Long userId) {
+        return expenseRepository.findByIdAndUserId(getExpenseRequest.id(), userId)
+                .map(expense -> new ExpenseResponse(
+                        expense.getId(),
+                        expense.getName(),
+                        expense.getDescription(),
+                        expense.getAmount(),
+                        expense.getCategory(),
+                        expense.getDate()
+                ));
     }
 
     @Override
-    public Page<ExpenseResponse> getAllExpenses(Pageable pageable) {
-        Page<Expense> expensePage = repository.findAll(pageable);
-        return expensePage.map(this::convertToDto);
+    public Page<ExpenseResponse> getAllExpenses(Pageable pageable, Long userId) {
+        return expenseRepository.findByUserId(userId, pageable)
+                .map(expense -> new ExpenseResponse(
+                        expense.getId(),
+                        expense.getName(),
+                        expense.getDescription(),
+                        expense.getAmount(),
+                        expense.getCategory(),
+                        expense.getDate()
+                ));
     }
     @Transactional
     @Override
-    public Optional<ExpenseResponse> editExpense(ExpenseRequest expenseRequest) {
+    public Optional<ExpenseResponse> editExpense(ExpenseRequest expenseRequest, Long userId) {
         if (expenseRequest == null || expenseRequest.name() == null || expenseRequest.amount() == null) {
             throw new InvalidExpenseDetailsException("Invalid expense details");
         }
 
-        Expense expense = repository.findByName(expenseRequest.name()).orElseThrow(
-                () -> new ExpenseNotFoundException("Expense not found")
+        Expense expense = expenseRepository.findByIdAndUserId(expenseRequest.id(), userId).orElseThrow(
+                () -> new ExpenseNotFoundException("Expense not found or access denied")
         );
 
         expense.setName(expenseRequest.name());
@@ -87,26 +96,23 @@ public class ExpenseServiceImpl implements ExpenseService {
         expense.setCategory(expenseRequest.category());
         expense.setDescription(expenseRequest.description());
         expense.setAmount(expenseRequest.amount());
-        repository.save(expense);
+        expenseRepository.save(expense);
 
         return Optional.of(convertToDto(expense));
     }
 
     @Override
-    public RemoveExpenseResponse deleteExpense(RemoveExpenseRequest request) {
-        if (request == null || request.id() == null) {
-            throw new InvalidCredentialException("Invalid id");
-        }
+    public RemoveExpenseResponse deleteExpense(RemoveExpenseRequest request, Long userId) {
+        Expense expense = expenseRepository.findByIdAndUserId(request.id(), userId)
+                .orElseThrow(() -> new ExpenseNotFoundException("Expense not found or access denied"));
 
-        Expense expense = repository.findById(request.id())
-                .orElseThrow(() -> new ExpenseNotFoundException("Expense not found"));
-
-        repository.delete(expense);
-        return new RemoveExpenseResponse(true, "Expense removed");
+        expenseRepository.delete(expense);
+        return new RemoveExpenseResponse(true, "Expense deleted successfully");
     }
 
+
     private boolean expenseExists(String expenseName) {
-        return repository.findByName(expenseName).isPresent();
+        return expenseRepository.findByName(expenseName).isPresent();
     }
 
     private ExpenseResponse convertToDto(Expense expense) {

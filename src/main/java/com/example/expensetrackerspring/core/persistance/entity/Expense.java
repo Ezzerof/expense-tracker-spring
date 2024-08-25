@@ -23,6 +23,10 @@ public class Expense {
     private BigDecimal amount;
     private LocalDate date;
 
+    @ManyToOne
+    @JoinColumn(name="user_id", referencedColumnName = "id")
+    private User user;
+
     public Expense() {
     }
 }

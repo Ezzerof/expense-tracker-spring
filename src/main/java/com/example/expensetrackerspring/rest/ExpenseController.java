@@ -3,6 +3,7 @@ package com.example.expensetrackerspring.rest;
 import com.example.expensetrackerspring.core.exceptions.DuplicateExpenseException;
 import com.example.expensetrackerspring.core.exceptions.ExpenseNotFoundException;
 import com.example.expensetrackerspring.core.exceptions.InvalidExpenseDetailsException;
+import com.example.expensetrackerspring.core.persistance.entity.User;
 import com.example.expensetrackerspring.core.service.ExpenseService;
 import com.example.expensetrackerspring.rest.payload.request.ExpenseRequest;
 import com.example.expensetrackerspring.rest.payload.request.GetExpenseRequest;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -31,10 +33,10 @@ public class ExpenseController {
         this.expenseService = expenseService;
     }
     @PostMapping
-    public ResponseEntity<String> saveExpense(@RequestBody ExpenseRequest expenseRequest) {
+    public ResponseEntity<String> saveExpense(@RequestBody ExpenseRequest expenseRequest, @AuthenticationPrincipal User user) {
         try {
-            expenseService.saveExpense(expenseRequest);
-            logger.info("Expense saved successfully");
+            expenseService.saveExpense(expenseRequest, user.getId());
+            logger.info("Expense {} saved successfully by user {}", expenseRequest.name(), user.getUsername());
             return ResponseEntity.status(HttpStatus.CREATED).build();
         }
         catch (InvalidExpenseDetailsException e) {
@@ -47,10 +49,10 @@ public class ExpenseController {
         }
     }
     @GetMapping("/{id}")
-    public ResponseEntity<?> getExpense(@PathVariable Long id) {
+    public ResponseEntity<?> getExpense(@PathVariable Long id, @AuthenticationPrincipal User user) {
         try {
-            ExpenseResponse expenseResponse = expenseService.getExpense(new GetExpenseRequest(id)).orElseThrow();
-            logger.info("Expense retrieved successfully");
+            ExpenseResponse expenseResponse = expenseService.getExpense(new GetExpenseRequest(id), user.getId()).orElseThrow();
+            logger.info("Expense id {} retrieved successfully by {}", id, user.getUsername());
             return ResponseEntity.ok(expenseResponse);
         }
         catch (InvalidExpenseDetailsException e) {
@@ -62,22 +64,40 @@ public class ExpenseController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Expense not found");
         }
     }
-    @GetMapping
-    public ResponseEntity<Page<ExpenseResponse>> getAllExpenses
-            (@RequestParam(defaultValue = "0") int page,
-             @RequestParam(defaultValue = "10") int size,
-             @RequestParam(defaultValue = "id") String sortBy
-             ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
-        Page<ExpenseResponse> expensePage = expenseService.getAllExpenses(pageable);
+    @GetMapping("/expenses")
+    public ResponseEntity<Page<ExpenseResponse>> getAllExpenses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "date,desc") String sort,
+            @AuthenticationPrincipal User user) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
+        Page<ExpenseResponse> expensePage = expenseService.getAllExpenses(pageable, user.getId());
         logger.info("All expenses retrieved successfully");
         return new ResponseEntity<>(expensePage, HttpStatus.OK);
     }
-    @DeleteMapping
-    public ResponseEntity<RemoveExpenseResponse> deleteExpense(@PathVariable Long id) {
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> editExpense(@PathVariable Long id, @RequestBody ExpenseRequest expenseRequest, @AuthenticationPrincipal User user) {
+        try {
+            ExpenseResponse updatedExpense = expenseService.editExpense(expenseRequest, user.getId()).orElseThrow(() ->
+                    new ExpenseNotFoundException("Expense not found or access denied"));
+            logger.info("Expense {} updated successfully by user {}", id, user.getUsername());
+            return ResponseEntity.ok(updatedExpense);
+        } catch (InvalidExpenseDetailsException e) {
+            logger.error("Invalid expense details provided for {}", id, e);
+            return ResponseEntity.badRequest().body("Invalid expense details");
+        } catch (ExpenseNotFoundException e) {
+            logger.error("Attempt to edit non-existing or unauthorized expense {}", id, e);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<RemoveExpenseResponse> deleteExpense(@PathVariable Long id, @AuthenticationPrincipal User user) {
         RemoveExpenseRequest request = new RemoveExpenseRequest(id);
-        RemoveExpenseResponse response = expenseService.deleteExpense(request);
-        logger.info("Expense deleted successfully");
+        RemoveExpenseResponse response = expenseService.deleteExpense(request, user.getId());
+        logger.info("Expense id {} deleted successfully by user {}", id, user.getUsername());
         return ResponseEntity.ok(response);
     }
 }
