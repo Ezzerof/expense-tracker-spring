@@ -7,6 +7,7 @@ import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Collections;
 
@@ -25,6 +26,7 @@ public class User implements UserDetails {
     private String username;
     private String password;
     private String email;
+    private BigDecimal balance;
 
     public User() {
     }
