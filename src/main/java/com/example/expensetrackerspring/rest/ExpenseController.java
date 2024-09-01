@@ -17,6 +17,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -64,22 +67,32 @@ public class ExpenseController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Expense not found");
         }
     }
-    @GetMapping("/expenses")
-    public ResponseEntity<Page<ExpenseResponse>> getAllExpenses(
+    @GetMapping
+    public ResponseEntity<PagedModel<EntityModel<ExpenseResponse>>> getAllExpenses(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "date,desc") String sort,
-            @AuthenticationPrincipal User user) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
+            @AuthenticationPrincipal User user,
+            PagedResourcesAssembler<ExpenseResponse> assembler) {
+
+        String[] sortParams = sort.split(",");
+        String sortProperty = sortParams[0];
+        Sort.Direction sortDirection = Sort.Direction.fromOptionalString(sortParams[1]).orElse(Sort.Direction.ASC);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortProperty));
+
         Page<ExpenseResponse> expensePage = expenseService.getAllExpenses(pageable, user.getId());
-        logger.info("All expenses retrieved successfully");
-        return new ResponseEntity<>(expensePage, HttpStatus.OK);
+
+        PagedModel<EntityModel<ExpenseResponse>> pagedModel = assembler.toModel(expensePage);
+
+        logger.info("All expenses retrieved successfully for user {}, page: {}, size: {}", user.getUsername(), page, size);
+        return ResponseEntity.ok(pagedModel);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> editExpense(@PathVariable Long id, @RequestBody ExpenseRequest expenseRequest, @AuthenticationPrincipal User user) {
         try {
-            ExpenseResponse updatedExpense = expenseService.editExpense(expenseRequest, user.getId()).orElseThrow(() ->
+            ExpenseResponse updatedExpense = expenseService.editExpense(id, expenseRequest, user.getId()).orElseThrow(() ->
                     new ExpenseNotFoundException("Expense not found or access denied"));
             logger.info("Expense {} updated successfully by user {}", id, user.getUsername());
             return ResponseEntity.ok(updatedExpense);

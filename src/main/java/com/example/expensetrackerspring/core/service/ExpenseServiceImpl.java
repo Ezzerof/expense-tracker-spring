@@ -115,7 +115,7 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     @Transactional
     @Override
-    public Optional<ExpenseResponse> editExpense(ExpenseRequest expenseRequest, Long userId) {
+    public Optional<ExpenseResponse> editExpense(Long id, ExpenseRequest expenseRequest, Long userId) {
         if (expenseRequest == null || expenseRequest.name() == null || expenseRequest.amount() == null) {
             throw new InvalidExpenseDetailsException("Expense details are required and cannot be null.");
         }
