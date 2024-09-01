@@ -1,5 +1,6 @@
 package com.example.expensetrackerspring.core.persistance.entity;
 
+import com.example.expensetrackerspring.core.RecurrenceFrequency;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,7 +22,11 @@ public class Expense {
     private String description;
     private String category;
     private BigDecimal amount;
-    private LocalDate date;
+    private LocalDate startDate;
+    private LocalDate endDate;
+
+    @Enumerated(EnumType.STRING)
+    private RecurrenceFrequency recurrenceFrequency;
 
     @ManyToOne
     @JoinColumn(name="user_id", referencedColumnName = "id")
