@@ -6,19 +6,22 @@ import com.example.expensetrackerspring.core.exceptions.ExpenseNotFoundException
 import com.example.expensetrackerspring.core.exceptions.InvalidExpenseDetailsException;
 import com.example.expensetrackerspring.core.exceptions.UserNotFoundException;
 import com.example.expensetrackerspring.core.persistance.entity.Expense;
+import com.example.expensetrackerspring.core.persistance.entity.Income;
 import com.example.expensetrackerspring.core.persistance.entity.User;
 import com.example.expensetrackerspring.core.persistance.repository.ExpenseRepository;
+import com.example.expensetrackerspring.core.persistance.repository.IncomeRepository;
 import com.example.expensetrackerspring.core.persistance.repository.UserRepository;
-import com.example.expensetrackerspring.rest.payload.request.ExpenseRequest;
-import com.example.expensetrackerspring.rest.payload.request.GetExpenseRequest;
-import com.example.expensetrackerspring.rest.payload.request.RemoveExpenseRequest;
+import com.example.expensetrackerspring.rest.payload.request.*;
 import com.example.expensetrackerspring.rest.payload.response.ExpenseResponse;
+import com.example.expensetrackerspring.rest.payload.response.MonthlySummaryResponse;
 import com.example.expensetrackerspring.rest.payload.response.RemoveExpenseResponse;
+import com.example.expensetrackerspring.rest.payload.response.WeeklySummaryResponse;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -27,10 +30,12 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     private final ExpenseRepository expenseRepository;
     private final UserRepository userRepository;
+    private final IncomeRepository incomeRepository;
 
-    public ExpenseServiceImpl(ExpenseRepository expenseRepository, UserRepository userRepository) {
+    public ExpenseServiceImpl(ExpenseRepository expenseRepository, UserRepository userRepository, IncomeRepository incomeRepository) {
         this.expenseRepository = expenseRepository;
         this.userRepository = userRepository;
+        this.incomeRepository = incomeRepository;
     }
 
     @Override
@@ -188,6 +193,32 @@ public class ExpenseServiceImpl implements ExpenseService {
                 expenseRepository.save(recurringExpense);
             }
         }
+    }
+
+    @Override
+    public MonthlySummaryResponse getMonthlySummary(MonthlySummaryRequest monthlySummaryRequest) {
+        User user = userRepository.findById(monthlySummaryRequest.userId())
+                .orElseThrow(() -> new UserNotFoundException("User not found."));
+
+        BigDecimal totalExpenses = expenseRepository.findExpensesByUserIdAndMonthAndYear(user.getId(), monthlySummaryRequest.month(), monthlySummaryRequest.year())
+                .stream()
+                .map(Expense::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+
+        BigDecimal totalIncome = incomeRepository.findIncomesByUserIdAndMonthAndYear(user.getId(), monthlySummaryRequest.month(), monthlySummaryRequest.year())
+                .stream()
+                .map(Income::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal balance = totalIncome.subtract(totalExpenses).add(user.getBalance());
+
+        return new MonthlySummaryResponse(totalExpenses, totalIncome, balance);
+    }
+
+    @Override
+    public WeeklySummaryResponse getWeeklySummary(WeeklySummaryRequest weeklySummaryRequest) {
+        return null;
     }
 
     private LocalDate getNextOccurrenceDate(LocalDate currentDate, RecurrenceFrequency frequency) {

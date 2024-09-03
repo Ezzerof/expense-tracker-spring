@@ -1,5 +1,5 @@
 package com.example.expensetrackerspring.core;
 
-public enum Category {
+public enum ExpenseCategory {
     HOME, BILLS, ENTERTAINMENT, FOOD, CAR, OTHER
 }
