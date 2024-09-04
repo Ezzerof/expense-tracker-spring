@@ -2,5 +2,5 @@ package com.example.expensetrackerspring.rest.payload.response;
 
 import java.math.BigDecimal;
 
-public record MonthlySummaryResponse(BigDecimal totalExpenses, BigDecimal totalIncome, BigDecimal balance) {
+public record MonthlySummaryResponse(BigDecimal totalExpenses) {
 }
