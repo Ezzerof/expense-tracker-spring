@@ -1,5 +1,6 @@
 package com.example.expensetrackerspring.core.service;
 
+import com.example.expensetrackerspring.core.persistance.entity.Income;
 import com.example.expensetrackerspring.rest.payload.request.*;
 import com.example.expensetrackerspring.rest.payload.response.*;
 import org.springframework.data.domain.Page;
@@ -15,8 +16,11 @@ public interface IncomeService {
 
     Page<IncomeResponse> getAllIncomes(Pageable pageable, Long userId);
 
-    Optional<IncomeResponse> editExpense(IncomeRequest expenseRequest, Long userId);
+    Optional<IncomeResponse> editIncome(IncomeRequest expenseRequest, Long userId);
 
-    RemoveIncomeResponse deleteExpense(RemoveIncomeRequest request, Long userId);
+    RemoveIncomeResponse deleteIncome(RemoveIncomeRequest request, Long userId);
+    WeeklySummaryResponse getWeeklySummary(WeeklySummaryRequest weeklySummaryRequest);
+    MonthlySummaryResponse getMonthlySummary(MonthlySummaryRequest monthlySummaryRequest);
+    void generateRecurringIncome(Income income);
 
 }

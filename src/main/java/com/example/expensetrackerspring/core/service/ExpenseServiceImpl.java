@@ -205,15 +205,7 @@ public class ExpenseServiceImpl implements ExpenseService {
                 .map(Expense::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-
-        BigDecimal totalIncome = incomeRepository.findIncomesByUserIdAndMonthAndYear(user.getId(), monthlySummaryRequest.month(), monthlySummaryRequest.year())
-                .stream()
-                .map(Income::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal balance = totalIncome.subtract(totalExpenses).add(user.getBalance());
-
-        return new MonthlySummaryResponse(totalExpenses, totalIncome, balance);
+        return new MonthlySummaryResponse(totalExpenses);
     }
 
     @Override
