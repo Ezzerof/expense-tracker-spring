@@ -216,7 +216,15 @@ public class IncomeServiceImpl implements IncomeService {
 
     @Override
     public WeeklySummaryResponse getWeeklySummary(WeeklySummaryRequest weeklySummaryRequest) {
-        return null;
+        User user = userRepository.findById(weeklySummaryRequest.userId())
+                .orElseThrow(() -> new UserNotFoundException("User not found."));
+
+        BigDecimal totalIncome = incomeRepository.findWeeklyIncomeByUserIdAndDateRange(weeklySummaryRequest.userId(), weeklySummaryRequest.startOfTheWeek(), weeklySummaryRequest.endOfTheWeek())
+                .stream()
+                .map(Income::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new WeeklySummaryResponse(totalIncome);
     }
 
     private LocalDate getNextOccurrenceDate(LocalDate currentDate, RecurrenceFrequency frequency) {
