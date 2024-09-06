@@ -6,10 +6,8 @@ import com.example.expensetrackerspring.core.exceptions.ExpenseNotFoundException
 import com.example.expensetrackerspring.core.exceptions.InvalidExpenseDetailsException;
 import com.example.expensetrackerspring.core.exceptions.UserNotFoundException;
 import com.example.expensetrackerspring.core.persistance.entity.Expense;
-import com.example.expensetrackerspring.core.persistance.entity.Income;
 import com.example.expensetrackerspring.core.persistance.entity.User;
 import com.example.expensetrackerspring.core.persistance.repository.ExpenseRepository;
-import com.example.expensetrackerspring.core.persistance.repository.IncomeRepository;
 import com.example.expensetrackerspring.core.persistance.repository.UserRepository;
 import com.example.expensetrackerspring.rest.payload.request.*;
 import com.example.expensetrackerspring.rest.payload.response.ExpenseResponse;
@@ -30,12 +28,10 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     private final ExpenseRepository expenseRepository;
     private final UserRepository userRepository;
-    private final IncomeRepository incomeRepository;
 
-    public ExpenseServiceImpl(ExpenseRepository expenseRepository, UserRepository userRepository, IncomeRepository incomeRepository) {
+    public ExpenseServiceImpl(ExpenseRepository expenseRepository, UserRepository userRepository) {
         this.expenseRepository = expenseRepository;
         this.userRepository = userRepository;
-        this.incomeRepository = incomeRepository;
     }
 
     @Override
@@ -210,7 +206,15 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     @Override
     public WeeklySummaryResponse getWeeklySummary(WeeklySummaryRequest weeklySummaryRequest) {
-        return null;
+        User user = userRepository.findById(weeklySummaryRequest.userId())
+                .orElseThrow(() -> new UserNotFoundException("User not found."));
+
+        BigDecimal totalExpenses = expenseRepository.findWeeklyIncomeByUserIdAndDateRange(weeklySummaryRequest.userId(), weeklySummaryRequest.startOfTheWeek(), weeklySummaryRequest.endOfTheWeek())
+                .stream()
+                .map(Expense::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new WeeklySummaryResponse(totalExpenses);
     }
 
     private LocalDate getNextOccurrenceDate(LocalDate currentDate, RecurrenceFrequency frequency) {
