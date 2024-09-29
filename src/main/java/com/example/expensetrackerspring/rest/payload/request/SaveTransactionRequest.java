@@ -11,7 +11,8 @@ public record SaveTransactionRequest(
         String description,
         BigDecimal amount,
         String category,
-        LocalDate date,
+        LocalDate startDate,
+        LocalDate endDate,
         TransactionType transactionType
 ) {
 }

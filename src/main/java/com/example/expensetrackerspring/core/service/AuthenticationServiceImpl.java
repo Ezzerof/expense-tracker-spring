@@ -9,6 +9,7 @@ import com.example.expensetrackerspring.rest.payload.request.SignInRequest;
 import com.example.expensetrackerspring.rest.payload.request.SignUpRequest;
 import com.example.expensetrackerspring.rest.payload.response.SignInResponse;
 import com.example.expensetrackerspring.utils.UserInputValidation;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,10 +19,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthenticationServiceImpl implements AuthenticationService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private PasswordEncoder passwordEncoder;
 
-    public AuthenticationServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthenticationServiceImpl(UserRepository userRepository) {
         this.userRepository = userRepository;
+    }
+
+    @Autowired
+    public void setPasswordEncoder(PasswordEncoder passwordEncoder) {
         this.passwordEncoder = passwordEncoder;
     }
 

@@ -54,7 +54,8 @@ public class TransactionServiceImpl implements TransactionService {
                     .description(saveTransactionRequest.description())
                     .amount(saveTransactionRequest.amount())
                     .category(saveTransactionRequest.category())
-                    .date(saveTransactionRequest.date())
+                    .startDate(saveTransactionRequest.startDate())
+                    .endDate(saveTransactionRequest.endDate())
                     .build());
 
             return new SaveTransactionResponse(true, "Expense saved");
@@ -65,7 +66,8 @@ public class TransactionServiceImpl implements TransactionService {
                     .description(saveTransactionRequest.description())
                     .amount(saveTransactionRequest.amount())
                     .category(saveTransactionRequest.category())
-                    .date(saveTransactionRequest.date())
+                    .startDate(saveTransactionRequest.startDate())
+                    .endDate(saveTransactionRequest.endDate())
                     .build());
 
             return new SaveTransactionResponse(true, "Income saved");
@@ -84,7 +86,8 @@ public class TransactionServiceImpl implements TransactionService {
                             expense.getDescription(),
                             expense.getAmount(),
                             expense.getCategory(),
-                            expense.getDate()
+                            expense.getStartDate(),
+                            expense.getEndDate()
                     ));
         } else if (getTransactionRequest.transactionType() == TransactionType.INCOME) {
             return incomeRepository.findByIdAndUserId(getTransactionRequest.id(), userId)
@@ -94,7 +97,8 @@ public class TransactionServiceImpl implements TransactionService {
                             income.getDescription(),
                             income.getAmount(),
                             income.getCategory(),
-                            income.getDate()
+                            income.getStartDate(),
+                            income.getEndDate()
                     ));
         } else {
             throw new IllegalArgumentException("Unknown transaction type: " + getTransactionRequest.transactionType());
@@ -112,7 +116,8 @@ public class TransactionServiceImpl implements TransactionService {
                             expense.getDescription(),
                             expense.getAmount(),
                             expense.getCategory(),
-                            expense.getDate()
+                            expense.getStartDate(),
+                            expense.getEndDate()
                     ));
         } else if (transactionType == TransactionType.INCOME) {
             return incomeRepository.findByUserId(userId, pageable)
@@ -122,7 +127,8 @@ public class TransactionServiceImpl implements TransactionService {
                             income.getDescription(),
                             income.getAmount(),
                             income.getCategory(),
-                            income.getDate()
+                            income.getStartDate(),
+                            income.getEndDate()
                     ));
         } else {
             throw new IllegalArgumentException("Unknown transaction type: " + transactionType);
@@ -140,7 +146,8 @@ public class TransactionServiceImpl implements TransactionService {
                     .orElseThrow(() -> new TransactionNotFoundException("Expense not found or access denied"));
 
             expense.setName(saveTransactionRequest.name());
-            expense.setDate(saveTransactionRequest.date());
+            expense.setStartDate(saveTransactionRequest.startDate());
+            expense.setEndDate(saveTransactionRequest.endDate());
             expense.setCategory(saveTransactionRequest.category());
             expense.setDescription(saveTransactionRequest.description());
             expense.setAmount(saveTransactionRequest.amount());
@@ -152,7 +159,8 @@ public class TransactionServiceImpl implements TransactionService {
                     .orElseThrow(() -> new TransactionNotFoundException("Income not found or access denied"));
 
             income.setName(saveTransactionRequest.name());
-            income.setDate(saveTransactionRequest.date());
+            income.setStartDate(saveTransactionRequest.startDate());
+            income.setEndDate(saveTransactionRequest.endDate());
             income.setCategory(saveTransactionRequest.category());
             income.setDescription(saveTransactionRequest.description());
             income.setAmount(saveTransactionRequest.amount());
@@ -204,7 +212,8 @@ public class TransactionServiceImpl implements TransactionService {
                 expense.getDescription(),
                 expense.getAmount(),
                 expense.getCategory(),
-                expense.getDate()
+                expense.getStartDate(),
+                expense.getEndDate()
         );
     }
 
@@ -215,7 +224,8 @@ public class TransactionServiceImpl implements TransactionService {
                 income.getDescription(),
                 income.getAmount(),
                 income.getCategory(),
-                income.getDate()
+                income.getStartDate(),
+                income.getEndDate()
         );
     }
 }

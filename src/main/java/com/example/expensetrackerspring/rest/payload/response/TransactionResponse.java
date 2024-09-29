@@ -9,6 +9,7 @@ public record TransactionResponse(
         String description,
         BigDecimal amount,
         String category,
-        LocalDate date
+        LocalDate startDate,
+        LocalDate endDate
 ) {
 }

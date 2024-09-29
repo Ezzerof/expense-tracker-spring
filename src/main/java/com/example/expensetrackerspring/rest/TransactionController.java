@@ -69,7 +69,7 @@ public class TransactionController {
     public ResponseEntity<Page<TransactionResponse>> getAllTransactions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "date,desc") String sort,
+            @RequestParam(defaultValue = "startDate,desc") String sort,
             @RequestParam TransactionType transactionType,
             @AuthenticationPrincipal User user) {
         String[] sortParams = sort.split(",");
@@ -91,7 +91,8 @@ public class TransactionController {
                     saveTransactionRequest.description(),
                     saveTransactionRequest.amount(),
                     saveTransactionRequest.category(),
-                    saveTransactionRequest.date(),
+                    saveTransactionRequest.startDate(),
+                    saveTransactionRequest.endDate(),
                     saveTransactionRequest.transactionType()
             );
             TransactionResponse updatedTransaction = transactionService.updateTransaction(updatedRequest, user.getId()).orElseThrow(() ->
