@@ -1,12 +1,12 @@
 package com.example.expensetrackerspring.core.service;
 
 import com.example.expensetrackerspring.core.RecurrenceFrequency;
-import com.example.expensetrackerspring.core.exceptions.InvalidExpenseDetailsException;
+import com.example.expensetrackerspring.core.exceptions.InvalidTransactionDetailsException;
 import com.example.expensetrackerspring.core.persistance.entity.Expense;
 import com.example.expensetrackerspring.core.persistance.entity.RecurringExpense;
 import com.example.expensetrackerspring.core.persistance.repository.ExpenseRepository;
 import com.example.expensetrackerspring.core.persistance.repository.RecurringExpenseRepository;
-import com.example.expensetrackerspring.rest.payload.request.RecurringExpenseRequest;
+import com.example.expensetrackerspring.rest.payload.request.RecurringTransactionRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -25,9 +25,9 @@ public class RecurringExpenseServiceImpl implements RecurringExpenseService {
     }
 
     @Override
-    public void addRecurringExpense(RecurringExpenseRequest request) {
+    public void addRecurringExpense(RecurringTransactionRequest request) {
         if (request == null || request.name() == null || request.startDate() == null || request.endDate() == null) {
-            throw new InvalidExpenseDetailsException("Invalid expense details");
+            throw new InvalidTransactionDetailsException("Invalid expense details");
         }
 
         RecurringExpense recurringExpense = RecurringExpense.builder()

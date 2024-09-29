@@ -4,6 +4,7 @@ import com.example.expensetrackerspring.core.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
@@ -28,7 +29,7 @@ public class SecurityConfig {
     private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public SecurityConfig(CustomUserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+    public SecurityConfig(CustomUserDetailsService userDetailsService, @Lazy PasswordEncoder passwordEncoder) {
         this.userDetailsService = userDetailsService;
         this.passwordEncoder = passwordEncoder;
     }
