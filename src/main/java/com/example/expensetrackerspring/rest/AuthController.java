@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
@@ -40,14 +43,17 @@ public class AuthController {
     }
 
     @PostMapping("/sign-in")
-    public ResponseEntity<String> signIn(@RequestBody SignInRequest signInRequest) {
+    public ResponseEntity<Map<String, String>> signIn(@RequestBody SignInRequest signInRequest) {
         try {
             authenticationService.userSignIn(signInRequest);
             logger.info("User signed in successfully");
-            return ResponseEntity.ok().build();
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Login successful");
+            return ResponseEntity.ok(response);
         } catch (UserNotFoundException e) {
             logger.error("User not found during sign-in", e);
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("User not found");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "User not found"));
         }
     }
 }
