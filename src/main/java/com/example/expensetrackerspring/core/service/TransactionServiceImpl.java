@@ -1,31 +1,38 @@
 package com.example.expensetrackerspring.core.service;
 
+import com.example.expensetrackerspring.core.RecurrenceFrequency;
 import com.example.expensetrackerspring.core.TransactionType;
-import com.example.expensetrackerspring.core.exceptions.*;
+import com.example.expensetrackerspring.core.exceptions.DuplicateTransactionException;
+import com.example.expensetrackerspring.core.exceptions.InvalidTransactionDetailsException;
+import com.example.expensetrackerspring.core.exceptions.TransactionNotFoundException;
+import com.example.expensetrackerspring.core.exceptions.UserNotFoundException;
 import com.example.expensetrackerspring.core.persistance.entity.Expense;
 import com.example.expensetrackerspring.core.persistance.entity.Income;
 import com.example.expensetrackerspring.core.persistance.entity.User;
 import com.example.expensetrackerspring.core.persistance.repository.ExpenseRepository;
 import com.example.expensetrackerspring.core.persistance.repository.IncomeRepository;
 import com.example.expensetrackerspring.core.persistance.repository.UserRepository;
-import com.example.expensetrackerspring.rest.payload.request.SaveTransactionRequest;
 import com.example.expensetrackerspring.rest.payload.request.GetTransactionRequest;
 import com.example.expensetrackerspring.rest.payload.request.RemoveTransactionRequest;
-import com.example.expensetrackerspring.rest.payload.response.TransactionResponse;
+import com.example.expensetrackerspring.rest.payload.request.SaveTransactionRequest;
 import com.example.expensetrackerspring.rest.payload.response.RemoveTransactionResponse;
 import com.example.expensetrackerspring.rest.payload.response.SaveTransactionResponse;
+import com.example.expensetrackerspring.rest.payload.response.TransactionResponse;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.Optional;
+
 @Service
 public class TransactionServiceImpl implements TransactionService {
 
     private final ExpenseRepository expenseRepository;
     private final IncomeRepository incomeRepository;
     private final UserRepository userRepository;
+    private static final int DEFAULT_RECURRING_LIMIT = 12;
 
     public TransactionServiceImpl(ExpenseRepository expenseRepository, IncomeRepository incomeRepository, UserRepository userRepository) {
         this.expenseRepository = expenseRepository;
@@ -48,33 +55,16 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
         if (saveTransactionRequest.transactionType() == TransactionType.EXPENSE) {
-            expenseRepository.save(Expense.builder()
-                    .user(user)
-                    .name(saveTransactionRequest.name())
-                    .description(saveTransactionRequest.description())
-                    .amount(saveTransactionRequest.amount())
-                    .category(saveTransactionRequest.category())
-                    .startDate(saveTransactionRequest.startDate())
-                    .endDate(saveTransactionRequest.endDate())
-                    .build());
-
+            handleRecurringTransactions(user, saveTransactionRequest, TransactionType.EXPENSE);
             return new SaveTransactionResponse(true, "Expense saved");
         } else if (saveTransactionRequest.transactionType() == TransactionType.INCOME) {
-            incomeRepository.save(Income.builder()
-                    .user(user)
-                    .name(saveTransactionRequest.name())
-                    .description(saveTransactionRequest.description())
-                    .amount(saveTransactionRequest.amount())
-                    .category(saveTransactionRequest.category())
-                    .startDate(saveTransactionRequest.startDate())
-                    .endDate(saveTransactionRequest.endDate())
-                    .build());
-
+            handleRecurringTransactions(user, saveTransactionRequest, TransactionType.INCOME);
             return new SaveTransactionResponse(true, "Income saved");
         } else {
             throw new IllegalArgumentException("Unknown transaction type");
         }
     }
+
 
     @Override
     public Optional<TransactionResponse> getTransaction(GetTransactionRequest getTransactionRequest, Long userId) {
@@ -134,6 +124,7 @@ public class TransactionServiceImpl implements TransactionService {
             throw new IllegalArgumentException("Unknown transaction type: " + transactionType);
         }
     }
+
     @Transactional
     @Override
     public Optional<TransactionResponse> updateTransaction(SaveTransactionRequest saveTransactionRequest, Long userId) {
@@ -192,7 +183,16 @@ public class TransactionServiceImpl implements TransactionService {
         return new RemoveTransactionResponse(true, "Transaction deleted successfully");
     }
 
-
+    @Override
+    public LocalDate getNextOccurrenceDate(LocalDate currentDate, RecurrenceFrequency frequency) {
+        return switch (frequency) {
+            case DAILY -> currentDate.plusDays(1);
+            case WEEKLY -> currentDate.plusWeeks(1);
+            case MONTHLY -> currentDate.plusMonths(1);
+            case YEARLY -> currentDate.plusYears(1);
+            default -> throw new IllegalArgumentException("Unknown frequency: " + frequency);
+        };
+    }
 
     private boolean transactionExists(String transactionName, TransactionType transactionType) {
         if (transactionType == TransactionType.EXPENSE) {
@@ -228,4 +228,72 @@ public class TransactionServiceImpl implements TransactionService {
                 income.getEndDate()
         );
     }
+
+    private void handleRecurringTransactions(User user, SaveTransactionRequest saveTransactionRequest, TransactionType transactionType) {
+        LocalDate todayDate = LocalDate.now();
+        LocalDate nextDate = saveTransactionRequest.startDate();
+        int occurrences = 0;
+
+        if (saveTransactionRequest.recurrenceFrequency() != RecurrenceFrequency.SINGLE) {
+            while (nextDate.isAfter(todayDate.minusYears(1)) &&
+                    (saveTransactionRequest.endDate() == null || nextDate.isBefore(saveTransactionRequest.endDate())) &&
+                    occurrences < DEFAULT_RECURRING_LIMIT) {
+
+                if (transactionType == TransactionType.EXPENSE) {
+                    Expense recurringExpense = Expense.builder()
+                            .user(user)
+                            .name(saveTransactionRequest.name())
+                            .description(saveTransactionRequest.description())
+                            .category(saveTransactionRequest.category())
+                            .amount(saveTransactionRequest.amount())
+                            .recurrenceFrequency(saveTransactionRequest.recurrenceFrequency())
+                            .startDate(nextDate)
+                            .endDate(saveTransactionRequest.endDate())
+                            .build();
+
+                    expenseRepository.save(recurringExpense);
+                } else if (transactionType == TransactionType.INCOME) {
+                    Income recurringIncome = Income.builder()
+                            .user(user)
+                            .name(saveTransactionRequest.name())
+                            .description(saveTransactionRequest.description())
+                            .category(saveTransactionRequest.category())
+                            .amount(saveTransactionRequest.amount())
+                            .recurrenceFrequency(saveTransactionRequest.recurrenceFrequency())
+                            .startDate(nextDate)
+                            .endDate(saveTransactionRequest.endDate())
+                            .build();
+
+                    incomeRepository.save(recurringIncome);
+                }
+
+                nextDate = getNextOccurrenceDate(nextDate, saveTransactionRequest.recurrenceFrequency());
+                occurrences++;
+            }
+        }
+
+        if (transactionType == TransactionType.EXPENSE) {
+            expenseRepository.save(Expense.builder()
+                    .user(user)
+                    .name(saveTransactionRequest.name())
+                    .description(saveTransactionRequest.description())
+                    .amount(saveTransactionRequest.amount())
+                    .category(saveTransactionRequest.category())
+                    .recurrenceFrequency(saveTransactionRequest.recurrenceFrequency())
+                    .startDate(saveTransactionRequest.startDate())
+                    .endDate(saveTransactionRequest.endDate())
+                    .build());
+        } else if (transactionType == TransactionType.INCOME) {
+            incomeRepository.save(Income.builder()
+                    .user(user)
+                    .name(saveTransactionRequest.name())
+                    .description(saveTransactionRequest.description())
+                    .amount(saveTransactionRequest.amount())
+                    .category(saveTransactionRequest.category())
+                    .startDate(saveTransactionRequest.startDate())
+                    .endDate(saveTransactionRequest.endDate())
+                    .build());
+        }
+    }
+
 }

@@ -1,5 +1,6 @@
 package com.example.expensetrackerspring.rest.payload.request;
 
+import com.example.expensetrackerspring.core.RecurrenceFrequency;
 import com.example.expensetrackerspring.core.TransactionType;
 
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ public record SaveTransactionRequest(
         String category,
         LocalDate startDate,
         LocalDate endDate,
+        RecurrenceFrequency recurrenceFrequency,
         TransactionType transactionType
 ) {
 }

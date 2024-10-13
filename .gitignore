@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### React ###
+node_modules/
+npm-debug.log
+yarn.lock
+.env
+Thumbs.ds
+.gitkeep
