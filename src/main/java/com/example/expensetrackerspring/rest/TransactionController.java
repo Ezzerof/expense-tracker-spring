@@ -93,6 +93,7 @@ public class TransactionController {
                     saveTransactionRequest.category(),
                     saveTransactionRequest.startDate(),
                     saveTransactionRequest.endDate(),
+                    saveTransactionRequest.recurrenceFrequency(),
                     saveTransactionRequest.transactionType()
             );
             TransactionResponse updatedTransaction = transactionService.updateTransaction(updatedRequest, user.getId()).orElseThrow(() ->
