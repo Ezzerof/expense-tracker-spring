@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { saveAuthToken } from '../utils/storage';
 
 const Login = () => {
     const [username, setUsername] = useState('');
@@ -23,6 +24,7 @@ const Login = () => {
             });
 
             if (response.status === 200) {
+                localStorage.setItem('authToken', basicAuth);
                 alert('Login successful');
                 navigate('/calendar');
             } else {
