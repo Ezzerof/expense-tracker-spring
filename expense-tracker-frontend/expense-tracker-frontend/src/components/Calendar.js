@@ -2,84 +2,74 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionModal from './TransactionModal';
 import SavingsModal from './SavingsModal';
+import { removeAuthToken, getAuthToken } from '../utils/storage';
 
 const Calendar = () => {
     const [selectedMonth, setSelectedMonth] = useState('');
     const [calendarDays, setCalendarDays] = useState([]);
     const [selectedDay, setSelectedDay] = useState(null);
-    const [transactions, setTransactions] = useState([]); 
+    const [transactions, setTransactions] = useState([]);
     const [hoverIndex, setHoverIndex] = useState(null);
     const [menuOpen, setMenuOpen] = useState(false);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newTransaction, setNewTransaction] = useState({ name: '', amount: '', type: 'EXPENSE' }); 
+    const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+    const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
+    const [newTransaction, setNewTransaction] = useState({ name: '', amount: '', type: 'EXPENSE' });
     const [savings, setSavings] = useState(0);
     const navigate = useNavigate();
 
     const generateCalendar = async (year, month) => {
-        const daysInMonth = new Date(year, month + 1, 0).getDate(); 
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
         const daysArray = [];
-    
+
         for (let day = 1; day <= daysInMonth; day++) {
             const date = new Date(year, month, day);
             const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-    
+
             daysArray.push({
                 day,
                 dayName,
-                totalExpenses: 0, 
-                totalIncome: 0,    
-                remainingSavings: savings, 
+                totalExpenses: 0,
+                totalIncome: 0,
+                remainingSavings: savings,
             });
         }
-    
-        setCalendarDays(daysArray); 
+
+        setCalendarDays(daysArray);
     };
 
-    const fetchTransactions = async (date) => {
+    const fetchSavings = async () => {
         try {
-            const token = localStorage.getItem('authToken');
-
-            const response = await fetch(`/api/v1/transaction/${date.toISOString().split('T')[0]}`, {
-                method: 'GET',
+            const response = await fetch('http://localhost:8080/api/v1/transaction/savings', {
                 headers: {
+                    'Authorization': `Basic ${getAuthToken()}`,
                     'Content-Type': 'application/json',
-                    'Authorization': token,  
                 },
             });
-    
+
             if (!response.ok) {
-                const errorText = await response.text(); 
-                console.error(`Error fetching transactions for ${date}: ${response.status} - ${errorText}`);
-                return null;
+                console.error(`Error fetching savings: ${response.status} - ${response.statusText}`);
+                return;
             }
-    
-            const data = await response.json(); 
-            return data;
+
+            const data = await response.json();
+
+            if (data && data.savings !== undefined && data.savings !== null) {
+                setSavings(data.savings);
+            } else {
+                console.log('Savings is null, setting it to 0');
+                setSavings(0);
+            }
         } catch (error) {
-            console.error(`Error fetching transactions for ${date}: ${error.message}`);
+            console.error('Error fetching savings:', error);
         }
     };
 
     useEffect(() => {
-        const fetchSavings = async () => {
-            try {
-                const response = await fetch('/api/user/savings', {
-                    headers: {
-                        'Authorization': `Basic ${localStorage.getItem('authToken')}`, 
-                    },
-                });
-                const data = await response.json();
-                setSavings(data.savings); 
-            } catch (error) {
-                console.error('Error fetching savings:', error);
-            }
-        };
-    
         const today = new Date();
         const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
         setSelectedMonth(defaultMonth);
         generateCalendar(today.getFullYear(), today.getMonth());
-    
+
         fetchSavings();
     }, []);
 
@@ -96,10 +86,10 @@ const Calendar = () => {
                     date: selectedDay.toISOString().split('T')[0],
                 }),
             });
-    
+
             if (response.ok) {
                 generateCalendar(new Date().getFullYear(), new Date().getMonth());
-                closeModal();  
+                closeTransactionModal();
             } else {
                 console.error('Failed to save transaction');
             }
@@ -115,7 +105,7 @@ const Calendar = () => {
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('authToken');
+        removeAuthToken();
         navigate('/');
     };
 
@@ -124,16 +114,20 @@ const Calendar = () => {
     };
 
     const handleChangeSavings = () => {
-        setIsModalOpen(true);
+        setIsSavingsModalOpen(true);
     };
 
-    const closeModal = () => {
-        setIsModalOpen(false);
+    const closeTransactionModal = () => {
+        setIsTransactionModalOpen(false);
+    };
+
+    const closeSavingsModal = () => {
+        setIsSavingsModalOpen(false);
     };
 
     const handleDayClick = async (date) => {
         setSelectedDay(date);
-    
+
         try {
             const response = await fetch(`/api/transactions/${date.toISOString().split('T')[0]}`, {
                 headers: {
@@ -141,30 +135,30 @@ const Calendar = () => {
                 },
             });
             const data = await response.json();
-            setTransactions(data); 
-            setIsModalOpen(true);  
+            setTransactions(data);
+            setIsTransactionModalOpen(true);
         } catch (error) {
             console.error(`Error fetching transactions for ${date}:`, error);
         }
     };
 
-    const handleSaveSavings = async (newSavings) => {
+    const handleSaveSavings = async (newSavingsValue) => {
         try {
-            const response = await fetch('/api/user/savings', {
+            const response = await fetch('http://localhost:8080/api/v1/transaction/savings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Basic ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Basic ${getAuthToken()}`,
                 },
-                body: JSON.stringify({ savings: newSavings }),
+                body: JSON.stringify({ savings: newSavingsValue }),
             });
 
             if (response.ok) {
-                setSavings(newSavings);
-                setIsModalOpen(false);
-                generateCalendar(new Date().getFullYear(), new Date().getMonth());
+                setSavings(newSavingsValue);
+                setIsSavingsModalOpen(false);
+                await fetchSavings();
             } else {
-                console.error('Failed to save savings');
+                console.error('Failed to save savings:', response.statusText);
             }
         } catch (error) {
             console.error('Error saving savings:', error);
@@ -191,11 +185,21 @@ const Calendar = () => {
                 </div>
             )}
 
-            {isModalOpen && (
+            {isSavingsModalOpen && (
                 <SavingsModal
-                    onClose={closeModal}
+                    onClose={closeSavingsModal}
                     onSaveSavings={handleSaveSavings}
                     currentSavings={savings}
+                />
+            )}
+
+            {isTransactionModalOpen && (
+                <TransactionModal
+                    transactions={transactions}
+                    selectedDay={selectedDay}
+                    onClose={closeTransactionModal}
+                    onAddTransaction={handleAddTransaction}
+                    setNewTransaction={setNewTransaction}
                 />
             )}
 
@@ -220,6 +224,7 @@ const Calendar = () => {
                         style={index === hoverIndex ? { ...calendarDayStyle, ...calendarDayHoverStyle } : calendarDayStyle}
                         onMouseEnter={() => setHoverIndex(index)}
                         onMouseLeave={() => setHoverIndex(null)}
+                        onClick={() => handleDayClick(new Date(selectedMonth.split('-')[0], selectedMonth.split('-')[1] - 1, day.day))}
                     >
                         <div className="date-header" style={dateHeaderStyle}>
                             <span style={index === hoverIndex ? dayNameHoverStyle : dayNameStyle}>{day.dayName}</span>
