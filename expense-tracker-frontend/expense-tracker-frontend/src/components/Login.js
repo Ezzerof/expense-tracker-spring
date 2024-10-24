@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { saveAuthToken } from '../utils/storage';
 
+
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -10,9 +11,9 @@ const Login = () => {
 
     const handleLogin = async (e) => {
         e.preventDefault();
-
+    
         const basicAuth = 'Basic ' + btoa(`${username}:${password}`);
-
+    
         try {
             const response = await fetch('http://localhost:8080/api/v1/auth/sign-in', {
                 method: 'POST',
@@ -22,10 +23,9 @@ const Login = () => {
                 },
                 body: JSON.stringify({ username, password })
             });
-
+    
             if (response.status === 200) {
-                localStorage.setItem('authToken', basicAuth);
-                alert('Login successful');
+                saveAuthToken(username, password); 
                 navigate('/calendar');
             } else {
                 alert('Login failed!');
@@ -35,6 +35,7 @@ const Login = () => {
             alert('An error occurred during login');
         }
     };
+    
 
     return (
         <div className="login-container" style={containerStyle}>

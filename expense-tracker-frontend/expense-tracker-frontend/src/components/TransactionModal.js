@@ -26,7 +26,6 @@ const TransactionModal = ({ onClose, onSaveSavings }) => {
     );
 };
 
-// Modal styles
 const modalOverlayStyle = {
     position: 'fixed',
     top: 0,
