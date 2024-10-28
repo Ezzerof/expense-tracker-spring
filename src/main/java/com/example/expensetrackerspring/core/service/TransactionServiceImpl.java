@@ -6,11 +6,9 @@ import com.example.expensetrackerspring.core.exceptions.DuplicateTransactionExce
 import com.example.expensetrackerspring.core.exceptions.InvalidTransactionDetailsException;
 import com.example.expensetrackerspring.core.exceptions.TransactionNotFoundException;
 import com.example.expensetrackerspring.core.exceptions.UserNotFoundException;
-import com.example.expensetrackerspring.core.persistance.entity.Expense;
-import com.example.expensetrackerspring.core.persistance.entity.Income;
+import com.example.expensetrackerspring.core.persistance.entity.Transaction;
 import com.example.expensetrackerspring.core.persistance.entity.User;
-import com.example.expensetrackerspring.core.persistance.repository.ExpenseRepository;
-import com.example.expensetrackerspring.core.persistance.repository.IncomeRepository;
+import com.example.expensetrackerspring.core.persistance.repository.TransactionRepository;
 import com.example.expensetrackerspring.core.persistance.repository.UserRepository;
 import com.example.expensetrackerspring.rest.payload.request.GetTransactionRequest;
 import com.example.expensetrackerspring.rest.payload.request.RemoveTransactionRequest;
@@ -24,19 +22,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
 
-    private final ExpenseRepository expenseRepository;
-    private final IncomeRepository incomeRepository;
+    private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
     private static final int DEFAULT_RECURRING_LIMIT = 12;
 
-    public TransactionServiceImpl(ExpenseRepository expenseRepository, IncomeRepository incomeRepository, UserRepository userRepository) {
-        this.expenseRepository = expenseRepository;
-        this.incomeRepository = incomeRepository;
+    public TransactionServiceImpl(TransactionRepository transactionRepository, UserRepository userRepository) {
+        this.transactionRepository = transactionRepository;
         this.userRepository = userRepository;
     }
 
@@ -50,79 +50,24 @@ public class TransactionServiceImpl implements TransactionService {
             throw new InvalidTransactionDetailsException("Invalid transaction details");
         }
 
-        if (transactionExists(saveTransactionRequest.name(), saveTransactionRequest.transactionType())) {
+        if (transactionExists(saveTransactionRequest.name(), saveTransactionRequest.transactionType(), userId)) {
             throw new DuplicateTransactionException("Transaction already exists");
         }
 
-        if (saveTransactionRequest.transactionType() == TransactionType.EXPENSE) {
-            handleRecurringTransactions(user, saveTransactionRequest, TransactionType.EXPENSE);
-            return new SaveTransactionResponse(true, "Expense saved");
-        } else if (saveTransactionRequest.transactionType() == TransactionType.INCOME) {
-            handleRecurringTransactions(user, saveTransactionRequest, TransactionType.INCOME);
-            return new SaveTransactionResponse(true, "Income saved");
-        } else {
-            throw new IllegalArgumentException("Unknown transaction type");
-        }
+        handleRecurringTransactions(user, saveTransactionRequest);
+        return new SaveTransactionResponse(true, "Transaction saved successfully");
     }
-
 
     @Override
     public Optional<TransactionResponse> getTransaction(GetTransactionRequest getTransactionRequest, Long userId) {
-        if (getTransactionRequest.transactionType() == TransactionType.EXPENSE) {
-            return expenseRepository.findByIdAndUserId(getTransactionRequest.id(), userId)
-                    .map(expense -> new TransactionResponse(
-                            expense.getId(),
-                            expense.getName(),
-                            expense.getDescription(),
-                            expense.getAmount(),
-                            expense.getCategory(),
-                            expense.getStartDate(),
-                            expense.getEndDate()
-                    ));
-        } else if (getTransactionRequest.transactionType() == TransactionType.INCOME) {
-            return incomeRepository.findByIdAndUserId(getTransactionRequest.id(), userId)
-                    .map(income -> new TransactionResponse(
-                            income.getId(),
-                            income.getName(),
-                            income.getDescription(),
-                            income.getAmount(),
-                            income.getCategory(),
-                            income.getStartDate(),
-                            income.getEndDate()
-                    ));
-        } else {
-            throw new IllegalArgumentException("Unknown transaction type: " + getTransactionRequest.transactionType());
-        }
+        return transactionRepository.findByIdAndUserId(getTransactionRequest.id(), userId)
+                .map(this::convertTransactionToDto);
     }
-
 
     @Override
     public Page<TransactionResponse> getAllTransactions(Pageable pageable, Long userId, TransactionType transactionType) {
-        if (transactionType == TransactionType.EXPENSE) {
-            return expenseRepository.findByUserId(userId, pageable)
-                    .map(expense -> new TransactionResponse(
-                            expense.getId(),
-                            expense.getName(),
-                            expense.getDescription(),
-                            expense.getAmount(),
-                            expense.getCategory(),
-                            expense.getStartDate(),
-                            expense.getEndDate()
-                    ));
-        } else if (transactionType == TransactionType.INCOME) {
-            return incomeRepository.findByUserId(userId, pageable)
-                    .map(income -> new TransactionResponse(
-                            income.getId(),
-                            income.getName(),
-                            income.getDescription(),
-                            income.getAmount(),
-                            income.getCategory(),
-                            income.getStartDate(),
-                            income.getEndDate()
-                    ));
-        } else {
-            throw new IllegalArgumentException("Unknown transaction type: " + transactionType);
-        }
+        return transactionRepository.findByUserIdAndTransactionType(userId, transactionType, pageable)
+                .map(this::convertTransactionToDto);
     }
 
     @Transactional
@@ -132,54 +77,26 @@ public class TransactionServiceImpl implements TransactionService {
             throw new InvalidTransactionDetailsException("Invalid transaction details");
         }
 
-        if (saveTransactionRequest.transactionType() == TransactionType.EXPENSE) {
-            Expense expense = expenseRepository.findByIdAndUserId(saveTransactionRequest.id(), userId)
-                    .orElseThrow(() -> new TransactionNotFoundException("Expense not found or access denied"));
+        Transaction transaction = transactionRepository.findByIdAndUserId(saveTransactionRequest.id(), userId)
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found or access denied"));
 
-            expense.setName(saveTransactionRequest.name());
-            expense.setStartDate(saveTransactionRequest.startDate());
-            expense.setEndDate(saveTransactionRequest.endDate());
-            expense.setCategory(saveTransactionRequest.category());
-            expense.setDescription(saveTransactionRequest.description());
-            expense.setAmount(saveTransactionRequest.amount());
-            expenseRepository.save(expense);
+        transaction.setName(saveTransactionRequest.name());
+        transaction.setStartDate(saveTransactionRequest.startDate());
+        transaction.setEndDate(saveTransactionRequest.endDate());
+        transaction.setCategory(saveTransactionRequest.category());
+        transaction.setDescription(saveTransactionRequest.description());
+        transaction.setAmount(saveTransactionRequest.amount());
+        transactionRepository.save(transaction);
 
-            return Optional.of(convertExpenseToDto(expense));
-        } else if (saveTransactionRequest.transactionType() == TransactionType.INCOME) {
-            Income income = incomeRepository.findByIdAndUserId(saveTransactionRequest.id(), userId)
-                    .orElseThrow(() -> new TransactionNotFoundException("Income not found or access denied"));
-
-            income.setName(saveTransactionRequest.name());
-            income.setStartDate(saveTransactionRequest.startDate());
-            income.setEndDate(saveTransactionRequest.endDate());
-            income.setCategory(saveTransactionRequest.category());
-            income.setDescription(saveTransactionRequest.description());
-            income.setAmount(saveTransactionRequest.amount());
-            incomeRepository.save(income);
-
-            return Optional.of(convertIncomeToDto(income));
-        } else {
-            throw new IllegalArgumentException("Unknown transaction type: " + saveTransactionRequest.transactionType());
-        }
+        return Optional.of(convertTransactionToDto(transaction));
     }
-
 
     @Override
     public RemoveTransactionResponse deleteTransaction(RemoveTransactionRequest request, Long userId) {
-        if (request.transactionType() == TransactionType.EXPENSE) {
-            Expense expense = expenseRepository.findByIdAndUserId(request.id(), userId)
-                    .orElseThrow(() -> new TransactionNotFoundException("Expense not found or access denied"));
+        Transaction transaction = transactionRepository.findByIdAndUserId(request.id(), userId)
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found or access denied"));
 
-            expenseRepository.delete(expense);
-        } else if (request.transactionType() == TransactionType.INCOME) {
-            Income income = incomeRepository.findByIdAndUserId(request.id(), userId)
-                    .orElseThrow(() -> new TransactionNotFoundException("Income not found or access denied"));
-
-            incomeRepository.delete(income);
-        } else {
-            throw new IllegalArgumentException("Unknown transaction type: " + request.transactionType());
-        }
-
+        transactionRepository.delete(transaction);
         return new RemoveTransactionResponse(true, "Transaction deleted successfully");
     }
 
@@ -194,42 +111,24 @@ public class TransactionServiceImpl implements TransactionService {
         };
     }
 
-    private boolean transactionExists(String transactionName, TransactionType transactionType) {
-        if (transactionType == TransactionType.EXPENSE) {
-            return expenseRepository.findByName(transactionName).isPresent();
-        } else if (transactionType == TransactionType.INCOME) {
-            return incomeRepository.findByName(transactionName).isPresent();
-        } else {
-            throw new IllegalArgumentException("Unknown transaction type: " + transactionType);
-        }
-
+    private boolean transactionExists(String transactionName, TransactionType transactionType, Long userId) {
+        return transactionRepository.findByNameAndTransactionTypeAndUserId(transactionName, transactionType, userId).isPresent();
     }
 
-    private TransactionResponse convertExpenseToDto(Expense expense) {
+    private TransactionResponse convertTransactionToDto(Transaction transaction) {
         return new TransactionResponse(
-                expense.getId(),
-                expense.getName(),
-                expense.getDescription(),
-                expense.getAmount(),
-                expense.getCategory(),
-                expense.getStartDate(),
-                expense.getEndDate()
+                transaction.getId(),
+                transaction.getName(),
+                transaction.getDescription(),
+                transaction.getAmount(),
+                transaction.getCategory(),
+                transaction.getStartDate(),
+                transaction.getEndDate(),
+                transaction.getTransactionType()
         );
     }
 
-    private TransactionResponse convertIncomeToDto(Income income) {
-        return new TransactionResponse(
-                income.getId(),
-                income.getName(),
-                income.getDescription(),
-                income.getAmount(),
-                income.getCategory(),
-                income.getStartDate(),
-                income.getEndDate()
-        );
-    }
-
-    private void handleRecurringTransactions(User user, SaveTransactionRequest saveTransactionRequest, TransactionType transactionType) {
+    private void handleRecurringTransactions(User user, SaveTransactionRequest saveTransactionRequest) {
         LocalDate todayDate = LocalDate.now();
         LocalDate nextDate = saveTransactionRequest.startDate();
         int occurrences = 0;
@@ -239,61 +138,61 @@ public class TransactionServiceImpl implements TransactionService {
                     (saveTransactionRequest.endDate() == null || nextDate.isBefore(saveTransactionRequest.endDate())) &&
                     occurrences < DEFAULT_RECURRING_LIMIT) {
 
-                if (transactionType == TransactionType.EXPENSE) {
-                    Expense recurringExpense = Expense.builder()
-                            .user(user)
-                            .name(saveTransactionRequest.name())
-                            .description(saveTransactionRequest.description())
-                            .category(saveTransactionRequest.category())
-                            .amount(saveTransactionRequest.amount())
-                            .recurrenceFrequency(saveTransactionRequest.recurrenceFrequency())
-                            .startDate(nextDate)
-                            .endDate(saveTransactionRequest.endDate())
-                            .build();
+                Transaction recurringTransaction = Transaction.builder()
+                        .user(user)
+                        .name(saveTransactionRequest.name())
+                        .description(saveTransactionRequest.description())
+                        .category(saveTransactionRequest.category())
+                        .amount(saveTransactionRequest.amount())
+                        .recurrenceFrequency(saveTransactionRequest.recurrenceFrequency())
+                        .startDate(nextDate)
+                        .endDate(saveTransactionRequest.endDate())
+                        .transactionType(saveTransactionRequest.transactionType())
+                        .build();
 
-                    expenseRepository.save(recurringExpense);
-                } else if (transactionType == TransactionType.INCOME) {
-                    Income recurringIncome = Income.builder()
-                            .user(user)
-                            .name(saveTransactionRequest.name())
-                            .description(saveTransactionRequest.description())
-                            .category(saveTransactionRequest.category())
-                            .amount(saveTransactionRequest.amount())
-                            .recurrenceFrequency(saveTransactionRequest.recurrenceFrequency())
-                            .startDate(nextDate)
-                            .endDate(saveTransactionRequest.endDate())
-                            .build();
-
-                    incomeRepository.save(recurringIncome);
-                }
-
+                transactionRepository.save(recurringTransaction);
                 nextDate = getNextOccurrenceDate(nextDate, saveTransactionRequest.recurrenceFrequency());
                 occurrences++;
             }
         }
 
-        if (transactionType == TransactionType.EXPENSE) {
-            expenseRepository.save(Expense.builder()
-                    .user(user)
-                    .name(saveTransactionRequest.name())
-                    .description(saveTransactionRequest.description())
-                    .amount(saveTransactionRequest.amount())
-                    .category(saveTransactionRequest.category())
-                    .recurrenceFrequency(saveTransactionRequest.recurrenceFrequency())
-                    .startDate(saveTransactionRequest.startDate())
-                    .endDate(saveTransactionRequest.endDate())
-                    .build());
-        } else if (transactionType == TransactionType.INCOME) {
-            incomeRepository.save(Income.builder()
-                    .user(user)
-                    .name(saveTransactionRequest.name())
-                    .description(saveTransactionRequest.description())
-                    .amount(saveTransactionRequest.amount())
-                    .category(saveTransactionRequest.category())
-                    .startDate(saveTransactionRequest.startDate())
-                    .endDate(saveTransactionRequest.endDate())
-                    .build());
-        }
+        transactionRepository.save(Transaction.builder()
+                .user(user)
+                .name(saveTransactionRequest.name())
+                .description(saveTransactionRequest.description())
+                .amount(saveTransactionRequest.amount())
+                .category(saveTransactionRequest.category())
+                .recurrenceFrequency(saveTransactionRequest.recurrenceFrequency())
+                .startDate(saveTransactionRequest.startDate())
+                .endDate(saveTransactionRequest.endDate())
+                .transactionType(saveTransactionRequest.transactionType())
+                .build());
     }
 
+    @Override
+    public List<TransactionResponse> getTransactionsByDate(LocalDate date, Long userId) {
+        List<Transaction> transactions = transactionRepository.findByStartDateAndUserId(date, userId);
+
+        List<TransactionResponse> transactionResponses = new ArrayList<>();
+        for (Transaction transaction : transactions) {
+            transactionResponses.add(convertTransactionToDto(transaction));
+        }
+        return transactionResponses;
+    }
+
+    public List<TransactionResponse> getTransactionsForMonth(Long userId, String yearMonth) {
+        YearMonth month = YearMonth.parse(yearMonth);
+        LocalDate startDate = month.atDay(1);
+        LocalDate endDate = month.atEndOfMonth();
+
+        List<Transaction> transactions = transactionRepository.findAllByUserIdAndStartDateBetween(userId, startDate, endDate);
+
+        List<TransactionResponse> transactionResponses = new ArrayList<>();
+        for (Transaction transaction : transactions) {
+            transactionResponses.add(convertTransactionToDto(transaction));
+        }
+
+        transactionResponses.sort(Comparator.comparing(TransactionResponse::startDate));
+        return transactionResponses;
+    }
 }
