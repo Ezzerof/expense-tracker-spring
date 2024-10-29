@@ -15,85 +15,7 @@ const Calendar = () => {
     const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
     const [savings, setSavings] = useState(0);
     const navigate = useNavigate();
-
     const menuRef = useRef(null);
-
-    const fetchTransactions = async (year, month) => {
-        try {
-            const response = await fetch(`http://localhost:8080/api/v1/transaction/month/${year}-${String(month + 1).padStart(2, '0')}`, {
-                headers: {
-                    'Authorization': `Basic ${getAuthToken()}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setTransactions(data);
-                generateCalendar(year, month, data);  // Update calendar with fetched transactions
-            } else {
-                console.error(`Error fetching transactions: ${response.status} - ${response.statusText}`);
-            }
-        } catch (error) {
-            console.error('Error fetching transactions:', error);
-        }
-    };
-
-    const handleSaveTransaction = async (transaction) => {
-        try {
-            const response = await fetch('http://localhost:8080/api/v1/transaction', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Basic ${getAuthToken()}`,
-                },
-                body: JSON.stringify(transaction),
-            });
-
-            if (response.ok) {
-                fetchTransactions(new Date(selectedMonth).getFullYear(), new Date(selectedMonth).getMonth());
-                setIsModalOpen(false);
-            } else {
-                console.error('Failed to save transaction:', response.statusText);
-            }
-        } catch (error) {
-            console.error('Error saving transaction:', error);
-        }
-    };
-
-    const generateCalendar = (year, month, transactionsForMonth = []) => {
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const daysArray = [];
-
-        for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(year, month, day);
-            const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-
-            const transactionsForDay = transactionsForMonth.filter(
-                (transaction) => new Date(transaction.startDate).getDate() === day
-            );
-
-            const totalExpenses = transactionsForDay
-                .filter((transaction) => transaction.transactionType === 'EXPENSE')
-                .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-            const totalIncome = transactionsForDay
-                .filter((transaction) => transaction.transactionType === 'INCOME')
-                .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-            const remainingSavings = savings + totalIncome - totalExpenses;
-
-            daysArray.push({
-                day,
-                dayName,
-                totalExpenses,
-                totalIncome,
-                remainingSavings,
-            });
-        }
-
-        setCalendarDays(daysArray);
-    };
 
     useEffect(() => {
         const fetchSavings = async () => {
@@ -119,28 +41,248 @@ const Calendar = () => {
         const today = new Date();
         const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
         setSelectedMonth(defaultMonth);
-        generateCalendar(today.getFullYear(), today.getMonth());
-
         fetchSavings();
-        fetchTransactions(today.getFullYear(), today.getMonth());
+        fetchTransactionsForMonth(defaultMonth);
     }, []);
+
+    const fetchTransactionsForDate = async (date) => {
+        const formattedDate = `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
+        try {
+            const response = await fetch(`http://localhost:8080/api/v1/transaction/day/${formattedDate}`, {
+                headers: {
+                    'Authorization': `Basic ${getAuthToken()}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+    
+            if (response.ok) {
+                const data = await response.json();
+                setTransactions(data);
+                generateCalendar(date.getFullYear(), date.getMonth(), data);
+            } else {
+                console.error(`Failed to fetch transactions: ${response.status} - ${response.statusText}`);
+            }
+        } catch (error) {
+            console.error('Error fetching transactions:', error);
+        }
+    };
+    
+
+    const fetchTransactionsForMonth = async (yearMonth) => {
+        try {
+            const response = await fetch(`http://localhost:8080/api/v1/transaction/month/${yearMonth}`, {
+                headers: {
+                    'Authorization': `Basic ${getAuthToken()}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+    
+            if (response.ok) {
+                const data = await response.json();
+                setTransactions(data);
+                const [year, month] = yearMonth.split('-');
+                generateCalendar(parseInt(year), parseInt(month) - 1, data);
+            } else {
+                console.error(`Failed to fetch transactions: ${response.status} - ${response.statusText}`);
+            }
+        } catch (error) {
+            console.error('Error fetching transactions:', error);
+        }
+    };
+    
+
+    const handleSaveSavings = async (newSavingsValue) => {
+        try {
+            const response = await fetch('http://localhost:8080/api/v1/transaction/savings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${getAuthToken()}`,
+                },
+                body: JSON.stringify({ savings: newSavingsValue }),
+            });
+
+            if (response.ok) {
+                setSavings(newSavingsValue);
+                fetchTransactionsForMonth(selectedMonth);
+                setIsSavingsModalOpen(false);
+            } else {
+                console.error('Failed to save savings:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error saving savings:', error);
+        }
+    };
+
+    const generateCalendar = (year, month, transactionsForMonth = []) => {
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const daysArray = [];
+        let accumulatedSavings = savings;
+    
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month, day);
+            const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+    
+            // Filter transactions for the current day
+            const transactionsForDay = transactionsForMonth.filter(
+                (transaction) => {
+                    const transactionDate = new Date(transaction.startDate);
+                    return (
+                        transactionDate.getFullYear() === date.getFullYear() &&
+                        transactionDate.getMonth() === date.getMonth() &&
+                        transactionDate.getDate() === date.getDate()
+                    );
+                }
+            );
+    
+            // Calculate total income and expenses for the current day
+            const totalExpenses = transactionsForDay
+                .filter((transaction) => transaction.transactionType === 'EXPENSE')
+                .reduce((sum, transaction) => sum + transaction.amount, 0);
+    
+            const totalIncome = transactionsForDay
+                .filter((transaction) => transaction.transactionType === 'INCOME')
+                .reduce((sum, transaction) => sum + transaction.amount, 0);
+    
+            // Update accumulated savings for each day
+            accumulatedSavings = accumulatedSavings - totalExpenses + totalIncome;
+    
+            daysArray.push({
+                day,
+                dayName,
+                totalExpenses,
+                totalIncome,
+                remainingSavings: accumulatedSavings,
+            });
+        }
+    
+        setCalendarDays(daysArray);
+    };
+    
+    
 
     const handleDayClick = (date) => {
         setSelectedDay(date);
-        const transactionsForDay = transactions.filter((t) => new Date(t.startDate).toDateString() === date.toDateString());
-        setTransactions(transactionsForDay);
+        const transactionsForDay = transactions.filter(
+            (t) => new Date(t.startDate).toDateString() === date.toDateString()
+        );
+        setSelectedDay({ date, transactionsForDay });
         setIsModalOpen(true);
     };
 
     const handleMonthChange = (e) => {
         const selectedDate = new Date(e.target.value);
         setSelectedMonth(e.target.value);
-        fetchTransactions(selectedDate.getFullYear(), selectedDate.getMonth());
+        generateCalendarForEntireMonth(selectedDate.getFullYear(), selectedDate.getMonth());
     };
+    
+    const generateCalendarForEntireMonth = (year, month) => {
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month, day);
+            fetchTransactionsForDate(date);
+        }
+    };
+    
 
     const handleLogout = () => {
         removeAuthToken();
         navigate('/');
+    };
+
+    const toggleMenu = () => {
+        setMenuOpen(!menuOpen);
+    };
+
+    const handleChangeSavings = () => {
+        setIsSavingsModalOpen(true);
+    };
+
+    const closeSavingsModal = () => {
+        setIsSavingsModalOpen(false);
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setMenuOpen(false);
+            }
+        };
+
+        if (menuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        } else {
+            document.removeEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [menuOpen]);
+
+    const handleSaveTransaction = async (transaction) => {
+        try {
+            const response = await fetch('http://localhost:8080/api/v1/transaction', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${getAuthToken()}`,
+                },
+                body: JSON.stringify(transaction),
+            });
+
+            if (response.ok) {
+                fetchTransactionsForMonth(selectedMonth);
+                setIsModalOpen(false);
+            } else {
+                console.error('Failed to save transaction:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error saving transaction:', error);
+        }
+    };
+
+    const handleEditTransaction = async (index, updatedTransaction) => {
+        try {
+            const response = await fetch(`http://localhost:8080/api/v1/transaction/${updatedTransaction.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${getAuthToken()}`,
+                },
+                body: JSON.stringify(updatedTransaction),
+            });
+
+            if (response.ok) {
+                fetchTransactionsForMonth(selectedMonth);
+                setIsModalOpen(false);
+            } else {
+                console.error('Failed to update transaction:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error updating transaction:', error);
+        }
+    };
+
+    const handleDeleteTransaction = async (transactionId) => {
+        try {
+            const response = await fetch(`http://localhost:8080/api/v1/transaction/${transactionId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Basic ${getAuthToken()}`,
+                },
+            });
+
+            if (response.ok) {
+                fetchTransactionsForMonth(selectedMonth);
+                setIsModalOpen(false);
+            } else {
+                console.error('Failed to delete transaction:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error deleting transaction:', error);
+        }
     };
 
     return (
@@ -148,16 +290,16 @@ const Calendar = () => {
             <h3 className="text-center">Expense Tracker - Calendar</h3>
 
             <div className="d-flex justify-content-start mb-4">
-                <button className="menu-btn" onClick={() => setMenuOpen(!menuOpen)} style={menuBtnStyle}>
+                <button className="menu-btn" onClick={toggleMenu} style={menuBtnStyle}>
                     ☰
                 </button>
             </div>
 
             {menuOpen && (
-                <div className="menu" style={menuStyle} ref={menuRef} onClick={(e) => e.stopPropagation()}>
+                <div className="menu" style={menuStyle} onClick={(e) => e.stopPropagation()} ref={menuRef}>
                     <p style={menuHeadingStyle}>Current Savings: £{savings}</p>
                     <ul style={menuListStyle}>
-                        <li onClick={() => setIsSavingsModalOpen(true)} style={menuItemStyle}>Change Current Savings</li>
+                        <li onClick={handleChangeSavings} style={menuItemStyle}>Change Current Savings</li>
                         <li onClick={handleLogout} style={menuItemStyle}>Logout</li>
                     </ul>
                 </div>
@@ -165,27 +307,20 @@ const Calendar = () => {
 
             {isSavingsModalOpen && (
                 <SavingsModal
-                    onClose={() => setIsSavingsModalOpen(false)}
-                    onSaveSavings={(newSavingsValue) => {
-                        setSavings(newSavingsValue);
-                        fetchTransactions(new Date(selectedMonth).getFullYear(), new Date(selectedMonth).getMonth());
-                    }}
+                    onClose={closeSavingsModal}
+                    onSaveSavings={handleSaveSavings}
                     currentSavings={savings}
                 />
             )}
 
             {isModalOpen && (
                 <TransactionModal
-                    transactions={transactions}
-                    selectedDay={selectedDay}
+                    transactions={selectedDay?.transactionsForDay || []}
+                    selectedDay={selectedDay?.date}
                     onClose={() => setIsModalOpen(false)}
                     onAddTransaction={handleSaveTransaction}
-                    onEditTransaction={(index, updatedTransaction) => handleSaveTransaction(updatedTransaction)}
-                    onDeleteTransaction={(transactionId) => {
-                        setTransactions((prevTransactions) =>
-                            prevTransactions.filter((transaction) => transaction.id !== transactionId)
-                        );
-                    }}
+                    onEditTransaction={handleEditTransaction}
+                    onDeleteTransaction={handleDeleteTransaction}
                 />
             )}
 
@@ -271,28 +406,6 @@ const menuItemStyle = {
     color: '#fff',
     marginBottom: '10px',
     borderRadius: '5px',
-};
-
-const modalOverlayStyle = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: '1001',
-};
-
-const modalStyle = {
-    backgroundColor: '#fff',
-    padding: '20px',
-    borderRadius: '8px',
-    width: '400px',
-    textAlign: 'center',
-    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
 };
 
 const calendarContainerStyle = {
