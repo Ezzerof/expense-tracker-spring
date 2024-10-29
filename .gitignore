@@ -39,3 +39,6 @@ yarn.lock
 .env
 Thumbs.ds
 .gitkeep
+
+src/main/resources/application.properties
+

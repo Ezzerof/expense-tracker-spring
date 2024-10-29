@@ -122,6 +122,7 @@ const TransactionModal = ({ onClose, onAddTransaction, selectedDay, onEditTransa
                         style={inputStyle}
                     >
                         <option value="NONE">None</option>
+                        <option value="SINGLE">Single</option>
                         <option value="DAILY">Daily</option>
                         <option value="WEEKLY">Weekly</option>
                         <option value="MONTHLY">Monthly</option>
