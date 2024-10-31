@@ -1,10 +1,20 @@
 import React, { useState, useEffect } from 'react';
 
-const TransactionModal = ({ onClose, onAddTransaction, selectedDay, onEditTransaction, onDeleteTransaction, transactions }) => {
+const TransactionModal = ({
+    onClose,
+    onAddTransaction,
+    selectedDay,
+    onEditTransaction,
+    onDeleteTransaction,
+    transactions,
+    editingTransaction,
+    onEditClick
+}) => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
     const [category, setCategory] = useState('');
+    const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [recurrenceFrequency, setRecurrenceFrequency] = useState('NONE');
     const [transactionType, setTransactionType] = useState('EXPENSE');
@@ -12,9 +22,21 @@ const TransactionModal = ({ onClose, onAddTransaction, selectedDay, onEditTransa
 
     useEffect(() => {
         if (selectedDay) {
-            setEndDate(selectedDay.toISOString().split('T')[0]);
+            const formattedDate = selectedDay.toISOString().split('T')[0];
+            setStartDate(formattedDate);
+            setEndDate(formattedDate);
         }
-    }, [selectedDay]);
+        if (editingTransaction) {
+            setName(editingTransaction.name);
+            setDescription(editingTransaction.description);
+            setAmount(editingTransaction.amount);
+            setCategory(editingTransaction.category);
+            setStartDate(editingTransaction.startDate);
+            setEndDate(editingTransaction.endDate);
+            setRecurrenceFrequency(editingTransaction.recurrenceFrequency);
+            setTransactionType(editingTransaction.transactionType);
+        }
+    }, [selectedDay, editingTransaction]);
 
     const handleSave = () => {
         if (!name || !amount || !category) {
@@ -23,24 +45,51 @@ const TransactionModal = ({ onClose, onAddTransaction, selectedDay, onEditTransa
         }
 
         const transaction = {
-            id: null,
+            id: editingTransaction ? editingTransaction.id : null,
             name,
             description,
             amount: parseFloat(amount),
             category,
-            startDate: selectedDay.toISOString().split('T')[0],
+            startDate,
             endDate,
             recurrenceFrequency,
             transactionType,
         };
 
-        onAddTransaction(transaction);
+        if (editingTransaction) {
+            onEditTransaction(transaction);
+        } else {
+            onAddTransaction(transaction);
+        }
+        resetForm();
+    };
+
+    const handleDelete = (transactionId, isRecurring) => {
+        if (isRecurring) {
+            const deleteAll = window.confirm(
+                'This is a recurring transaction. Would you like to delete all occurrences or just this one? Click OK to delete all, or Cancel to delete only this occurrence.'
+            );
+            onDeleteTransaction(transactionId, deleteAll);
+        } else {
+            onDeleteTransaction(transactionId, false);
+        }
+    };
+
+    const resetForm = () => {
+        setName('');
+        setDescription('');
+        setAmount('');
+        setCategory('');
+        setStartDate(selectedDay?.toISOString().split('T')[0] || '');
+        setEndDate(selectedDay?.toISOString().split('T')[0] || '');
+        setRecurrenceFrequency('NONE');
+        setTransactionType('EXPENSE');
     };
 
     return (
         <div style={modalOverlayStyle}>
             <div style={modalStyle}>
-                <h3>Add Transaction</h3>
+                <h3>{editingTransaction ? 'Edit Transaction' : 'Add Transaction'}</h3>
                 <div style={formContainerStyle}>
                     <label style={labelStyle}>Name</label>
                     <input
@@ -107,6 +156,14 @@ const TransactionModal = ({ onClose, onAddTransaction, selectedDay, onEditTransa
                         )}
                     </select>
 
+                    <label style={labelStyle}>Start Date</label>
+                    <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        style={inputStyle}
+                    />
+
                     <label style={labelStyle}>End Date</label>
                     <input
                         type="date"
@@ -129,15 +186,28 @@ const TransactionModal = ({ onClose, onAddTransaction, selectedDay, onEditTransa
                     </select>
                 </div>
                 <div style={buttonContainerStyle}>
-                    <button onClick={handleSave} style={buttonStyle}>Save</button>
-                    <button onClick={onClose} style={buttonStyle}>Close</button>
+                    <button onClick={handleSave} style={buttonStyle}>
+                        {editingTransaction ? 'Update' : 'Save'}
+                    </button>
+                    <button
+                        onClick={() => {
+                            resetForm();
+                            onClose();
+                        }}
+                        style={buttonStyle}
+                    >
+                        Close
+                    </button>
                 </div>
                 <h4>Existing Transactions</h4>
-                <button onClick={() => setShowTransactions(!showTransactions)} style={buttonStyle}>
+                <button
+                    onClick={() => setShowTransactions(!showTransactions)}
+                    style={buttonStyle}
+                >
                     {showTransactions ? 'Hide Transactions' : 'Show Transactions'}
                 </button>
-                {showTransactions && (
-                    transactions.length > 0 ? (
+                {showTransactions &&
+                    (transactions.length > 0 ? (
                         transactions.map((transaction, index) => (
                             <div key={index} style={{ marginBottom: '10px' }}>
                                 <div><strong>{transaction.name}</strong></div>
@@ -148,14 +218,23 @@ const TransactionModal = ({ onClose, onAddTransaction, selectedDay, onEditTransa
                                 <div>Start Date: {transaction.startDate}</div>
                                 <div>End Date: {transaction.endDate}</div>
                                 <div>Recurrence: {transaction.recurrenceFrequency}</div>
-                                <button onClick={() => onEditTransaction(index, transaction)} style={editButtonStyle}>Edit</button>
-                                <button onClick={() => onDeleteTransaction(transaction.id)} style={deleteButtonStyle}>Delete</button>
+                                <button
+                                    onClick={() => onEditClick(transaction)}
+                                    style={editButtonStyle}
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(transaction.id, transaction.recurrenceFrequency !== 'NONE')}
+                                    style={deleteButtonStyle}
+                                >
+                                    Delete
+                                </button>
                             </div>
                         ))
                     ) : (
                         <p>No transactions for this day.</p>
-                    )
-                )}
+                    ))}
             </div>
         </div>
     );

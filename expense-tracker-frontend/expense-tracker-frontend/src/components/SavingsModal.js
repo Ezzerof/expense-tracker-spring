@@ -12,16 +12,17 @@ const SavingsModal = ({ onClose, onSaveSavings, currentSavings }) => {
     return (
         <div style={modalOverlayStyle}>
             <div style={modalStyle}>
-                <h3>Change Savings</h3>
+                <h5>Update Savings</h5>
                 <input
                     type="number"
-                    placeholder="Enter new savings"
+                    style={inputStyle}
+                    placeholder="Enter new savings amount"
                     value={newSavings}
                     onChange={(e) => setNewSavings(e.target.value)}
                 />
                 <div style={buttonContainerStyle}>
-                    <button onClick={handleSave}>Save</button>
-                    <button onClick={onClose}>Close</button>
+                    <button style={closeButtonStyle} onClick={onClose}>Close</button>
+                    <button style={saveButtonStyle} onClick={handleSave}>Save</button>
                 </div>
             </div>
         </div>
@@ -54,6 +55,32 @@ const buttonContainerStyle = {
     display: 'flex',
     justifyContent: 'space-between',
     marginTop: '20px',
+};
+
+const inputStyle = {
+    padding: '10px',
+    width: '100%',
+    marginBottom: '20px',
+    borderRadius: '4px',
+    border: '1px solid #ddd',
+};
+
+const closeButtonStyle = {
+    backgroundColor: '#6c757d',
+    color: '#fff',
+    padding: '8px 16px',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    border: 'none',
+};
+
+const saveButtonStyle = {
+    backgroundColor: '#007bff',
+    color: '#fff',
+    padding: '8px 16px',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    border: 'none',
 };
 
 export default SavingsModal;
