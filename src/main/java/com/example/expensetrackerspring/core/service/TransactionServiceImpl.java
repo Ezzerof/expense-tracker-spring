@@ -16,6 +16,7 @@ import com.example.expensetrackerspring.rest.payload.request.SaveTransactionRequ
 import com.example.expensetrackerspring.rest.payload.response.RemoveTransactionResponse;
 import com.example.expensetrackerspring.rest.payload.response.SaveTransactionResponse;
 import com.example.expensetrackerspring.rest.payload.response.TransactionResponse;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
@@ -154,31 +156,21 @@ public class TransactionServiceImpl implements TransactionService {
                 nextDate = getNextOccurrenceDate(nextDate, saveTransactionRequest.recurrenceFrequency());
                 occurrences++;
             }
+        } else {
+            transactionRepository.save(Transaction.builder()
+                    .user(user)
+                    .name(saveTransactionRequest.name())
+                    .description(saveTransactionRequest.description())
+                    .amount(saveTransactionRequest.amount())
+                    .category(saveTransactionRequest.category())
+                    .recurrenceFrequency(saveTransactionRequest.recurrenceFrequency())
+                    .startDate(saveTransactionRequest.startDate())
+                    .endDate(saveTransactionRequest.endDate())
+                    .transactionType(saveTransactionRequest.transactionType())
+                    .build());
         }
-
-        transactionRepository.save(Transaction.builder()
-                .user(user)
-                .name(saveTransactionRequest.name())
-                .description(saveTransactionRequest.description())
-                .amount(saveTransactionRequest.amount())
-                .category(saveTransactionRequest.category())
-                .recurrenceFrequency(saveTransactionRequest.recurrenceFrequency())
-                .startDate(saveTransactionRequest.startDate())
-                .endDate(saveTransactionRequest.endDate())
-                .transactionType(saveTransactionRequest.transactionType())
-                .build());
     }
 
-    @Override
-    public List<TransactionResponse> getTransactionsByDate(LocalDate date, Long userId) {
-        List<Transaction> transactions = transactionRepository.findByStartDateAndUserId(date, userId);
-
-        List<TransactionResponse> transactionResponses = new ArrayList<>();
-        for (Transaction transaction : transactions) {
-            transactionResponses.add(convertTransactionToDto(transaction));
-        }
-        return transactionResponses;
-    }
 
     public List<TransactionResponse> getTransactionsForMonth(Long userId, String yearMonth) {
         YearMonth month = YearMonth.parse(yearMonth);
@@ -195,4 +187,40 @@ public class TransactionServiceImpl implements TransactionService {
         transactionResponses.sort(Comparator.comparing(TransactionResponse::startDate));
         return transactionResponses;
     }
+
+    public List<TransactionResponse> getTransactionsForDay(Long userId, LocalDate date) {
+        List<Transaction> transactions = transactionRepository.findByUserIdAndStartDate(userId, date);
+
+        return transactions.stream()
+                .map(transaction -> new TransactionResponse(
+                        transaction.getId(),
+                        transaction.getName(),
+                        transaction.getDescription(),
+                        transaction.getAmount(),
+                        transaction.getCategory(),
+                        transaction.getStartDate(),
+                        transaction.getEndDate(),
+                        transaction.getTransactionType()
+                ))
+                .collect(Collectors.toList());
+    }
+    @Transactional
+    @Override
+    public void deleteAllMatchingRecurringTransactions(Long transactionId, Long userId) {
+        Transaction transaction = transactionRepository.findByIdAndUserId(transactionId, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Transaction not found"));
+
+        transactionRepository.deleteAllByPattern(
+                transaction.getName(),
+                transaction.getAmount(),
+                transaction.getCategory(),
+                transaction.getTransactionType(),
+                transaction.getRecurrenceFrequency(),
+                transaction.getStartDate(),
+                transaction.getEndDate(),
+                userId
+        );
+    }
+
+
 }
