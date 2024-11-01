@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 public interface TransactionService {
@@ -27,4 +28,10 @@ public interface TransactionService {
     RemoveTransactionResponse deleteTransaction(RemoveTransactionRequest removeTransactionRequest, Long userId);
 
     LocalDate getNextOccurrenceDate(LocalDate currentDate, RecurrenceFrequency frequency);
+
+    List<TransactionResponse> getTransactionsForMonth(Long id, String yearMonth);
+
+    List<TransactionResponse> getTransactionsForDay(Long id, LocalDate parsedDate);
+
+    void deleteAllMatchingRecurringTransactions(Long id, Long id1);
 }

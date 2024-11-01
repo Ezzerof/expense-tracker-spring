@@ -1,5 +1,7 @@
 package com.example.expensetrackerspring.rest.payload.response;
 
+import com.example.expensetrackerspring.core.TransactionType;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -10,6 +12,7 @@ public record TransactionResponse(
         BigDecimal amount,
         String category,
         LocalDate startDate,
-        LocalDate endDate
+        LocalDate endDate,
+        TransactionType transactionType
 ) {
 }
