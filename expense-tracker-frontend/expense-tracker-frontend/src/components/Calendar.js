@@ -157,10 +157,9 @@ const Calendar = () => {
         try {
             const response = await fetchAPI('http://localhost:8080/api/v1/transaction', 'POST', transaction);
     
-            if (response.ok) { 
+            if (response.ok) {
                 await fetchTransactionsForMonth(selectedMonth);
-                window.location.reload()
-                setIsModalOpen(false);
+                setIsModalOpen(false); 
             } else {
                 console.error('Failed to save transaction:', response.statusText);
             }
@@ -168,6 +167,7 @@ const Calendar = () => {
             console.error('Error saving transaction:', error);
         }
     };
+    
 
     const handleEditClick = (transaction) => {
         setEditingTransaction(transaction);
@@ -177,7 +177,7 @@ const Calendar = () => {
     const handleEditTransaction = async (updatedTransaction) => {
         try {
             await fetchAPI(`http://localhost:8080/api/v1/transaction/${updatedTransaction.id}`, 'PUT', updatedTransaction);
-            fetchTransactionsForMonth(selectedMonth);
+            await fetchTransactionsForMonth(selectedMonth); 
             setEditingTransaction(null);
             setIsModalOpen(false);
         } catch (error) {
@@ -188,15 +188,19 @@ const Calendar = () => {
     const handleDeleteTransaction = async (transactionId) => {
         const deleteAll = window.confirm("Delete all occurrences of this recurring transaction?");
         try {
-            await fetchAPI(`http://localhost:8080/api/v1/transaction/${transactionId}?deleteAll=${deleteAll}`, 'DELETE');
-            fetchTransactionsForMonth(selectedMonth);
-            window.location.reload() 
-            setIsModalOpen(false);
+            const response = await fetchAPI(`http://localhost:8080/api/v1/transaction/${transactionId}?deleteAll=${deleteAll}`, 'DELETE');
+            
+            if (response.ok) {
+                
+                await fetchTransactionsForMonth(selectedMonth);
+                setIsModalOpen(false); 
+            } else {
+                console.error('Failed to delete transaction:', response.statusText);
+            }
         } catch (error) {
             console.error('Error deleting transaction:', error);
         }
     };
-    
     
 
     return (
