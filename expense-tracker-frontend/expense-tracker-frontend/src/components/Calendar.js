@@ -18,8 +18,6 @@ const Calendar = () => {
     const [savings, setSavings] = useState(0);
     const navigate = useNavigate();
     const menuRef = useRef(null);
-    const [loading, setLoading] = useState(false);
-    const [fetchCompleted, setFetchCompleted] = useState(false);
 
     useEffect(() => {
         const fetchSavings = async () => {
@@ -43,17 +41,16 @@ const Calendar = () => {
     }, [savings]);
 
     const fetchTransactionsForMonth = async (yearMonth) => {
-        setLoading(true);
+        
         try {
             const data = await fetchAPI(`http://localhost:8080/api/v1/transaction/month/${yearMonth}`);
             setTransactions(data);
             const [year, month] = yearMonth.split('-');
             generateCalendar(parseInt(year), parseInt(month) - 1, data);
-            setFetchCompleted(true);
         } catch (error) {
             console.error('Error fetching transactions:', error);
         } finally {
-            setLoading(false);
+            
         }
     };
 
@@ -155,23 +152,13 @@ const Calendar = () => {
 
     const handleSaveTransaction = async (transaction) => {
         try {
-            const response = await fetchAPI('http://localhost:8080/api/v1/transaction', 'POST', transaction);
-    
-            if (response.ok) {
-                await fetchTransactionsForMonth(selectedMonth);
-                setIsModalOpen(false); 
-            } else {
-                console.error('Failed to save transaction:', response.statusText);
-            }
+            await fetchAPI('http://localhost:8080/api/v1/transaction', 'POST', transaction);
+            await fetchTransactionsForMonth(selectedMonth);
+            
+            setIsModalOpen(false);
         } catch (error) {
             console.error('Error saving transaction:', error);
         }
-    };
-    
-
-    const handleEditClick = (transaction) => {
-        setEditingTransaction(transaction);
-        setIsModalOpen(true); 
     };
 
     const handleEditTransaction = async (updatedTransaction) => {
@@ -188,15 +175,9 @@ const Calendar = () => {
     const handleDeleteTransaction = async (transactionId) => {
         const deleteAll = window.confirm("Delete all occurrences of this recurring transaction?");
         try {
-            const response = await fetchAPI(`http://localhost:8080/api/v1/transaction/${transactionId}?deleteAll=${deleteAll}`, 'DELETE');
-            
-            if (response.ok) {
-                
-                await fetchTransactionsForMonth(selectedMonth);
-                setIsModalOpen(false); 
-            } else {
-                console.error('Failed to delete transaction:', response.statusText);
-            }
+            await fetchAPI(`http://localhost:8080/api/v1/transaction/${transactionId}?deleteAll=${deleteAll}`, 'DELETE');
+            await fetchTransactionsForMonth(selectedMonth); 
+            setIsModalOpen(false);
         } catch (error) {
             console.error('Error deleting transaction:', error);
         }
