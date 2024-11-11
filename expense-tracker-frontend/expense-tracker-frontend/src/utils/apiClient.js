@@ -16,12 +16,10 @@ const fetchAPI = async (url, method = 'GET', body) => {
         throw new Error(`HTTP error! Status: ${response.status}`);
     }
 
-    // Check if the response has content
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
         return await response.json();
     } else {
-        // If the response is empty or not JSON, return null or an empty object
         return null;
     }
 };

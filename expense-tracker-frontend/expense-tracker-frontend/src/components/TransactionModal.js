@@ -250,16 +250,20 @@ const modalOverlayStyle = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
+    fontSize: '1.4rem',
     zIndex: '1001',
 };
 
 const modalStyle = {
     backgroundColor: '#fff',
-    padding: '20px',
+    padding: '40px',  
     borderRadius: '8px',
-    width: '400px',
+    width: '700px',   
+    maxWidth: '90%', 
     textAlign: 'left',
     boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
+    maxHeight: '90vh',  
+    overflowY: 'auto', 
 };
 
 const formContainerStyle = {
@@ -301,6 +305,7 @@ const editButtonStyle = {
     backgroundColor: '#FFA500',
     color: '#fff',
     cursor: 'pointer',
+    fontSize: '1.4rem',
     marginRight: '5px',
 };
 
@@ -310,6 +315,7 @@ const deleteButtonStyle = {
     border: 'none',
     backgroundColor: '#FF6347',
     color: '#fff',
+    fontSize: '1.4rem',
     cursor: 'pointer',
 };
 
