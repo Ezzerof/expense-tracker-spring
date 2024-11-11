@@ -75,7 +75,7 @@ const Login = () => {
                     >
                         Login
                     </button>
-                    <p className="text-center mt-3">
+                    <p className="text-center mt-3" style={footerTextStyle}>
                         Don't have an account? <a href="/register" style={linkStyle}>Register</a>
                     </p>
                 </form>
@@ -88,49 +88,70 @@ const containerStyle = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    height: '100vh',
-    backgroundColor: '#f8f9fa',
+    minHeight: '100vh',
+    backgroundImage: 'linear-gradient(to bottom right, #f0f2f5, #dfe6e9)',
+    padding: '20px',
+    borderRadius: '10px',
+    '@media (max-width: 768px)': {
+        padding: '20px', 
+        maxWidth: '90%', 
+    },
 };
 
 const cardStyle = {
-    width: '100%',
-    maxWidth: '400px',
-    padding: '20px',
-    borderRadius: '10px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    backgroundColor: '#fff',
+    width: '90%',
+    maxWidth: '700px',
+    padding: '60px',
+    borderRadius: '20px',
+    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)',
+    backgroundColor: '#ffffff',
+    margin: 'auto',
 };
 
 const titleStyle = {
     fontWeight: 'bold',
     color: '#333',
+    fontSize: '2.5rem', 
+    marginBottom: '30px',
+    textAlign: 'center',
 };
 
 const labelStyle = {
     fontWeight: '500',
     color: '#555',
-};
-
-const inputStyle = {
-    borderRadius: '8px',
-    border: '1px solid #ccc',
-    padding: '10px',
-    width: '100%',
+    fontSize: '1.5rem', 
 };
 
 const buttonStyle = {
     borderRadius: '8px',
     backgroundColor: '#007bff',
     border: 'none',
-    padding: '12px 0',
+    padding: '15px 0', 
     fontWeight: 'bold',
     color: '#fff',
     cursor: 'pointer',
+    fontSize: '1.5rem', 
+    transition: 'background-color 0.3s', 
+};
+
+const inputStyle = {
+    borderRadius: '8px',
+    border: '1px solid #ccc',
+    padding: '16px',
+    width: '100%',
+    fontSize: '1.4rem',
+    marginBottom: '15px',
 };
 
 const buttonHoverStyle = {
     ...buttonStyle, 
     backgroundColor: '#0056b3',
+};
+
+const footerTextStyle = {
+    fontSize: '1.5rem',
+    textAlign: 'center',
+    marginTop: '20px',
 };
 
 const linkStyle = {
