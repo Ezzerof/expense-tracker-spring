@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import fetchAPI from '../utils/apiClient';
-import { format } from 'date-fns';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
-
+import { format } from 'date-fns';
 
 const TransactionModal = ({
     onClose,
@@ -12,6 +11,7 @@ const TransactionModal = ({
     onEditTransaction,
     onDeleteTransaction,
     editingTransaction = null,
+    setEditingTransaction, 
 }) => {
     const [formState, setFormState] = useState({
         name: '',
@@ -30,14 +30,13 @@ const TransactionModal = ({
 
     useEffect(() => {
         if (selectedDay && selectedDay instanceof Date) {
-            const formattedDate = selectedDay.toISOString().split('T')[0]; // Ensure it's a valid Date object
+            const formattedDate = selectedDay.toISOString().split('T')[0];
             setFormState((prevState) => ({
                 ...prevState,
                 startDate: formattedDate,
                 endDate: formattedDate,
             }));
         } else if (selectedDay?.day) {
-            // Handle if `selectedDay` is not a Date but has day/month/year
             const today = new Date();
             const formattedDate = `${today.getFullYear()}-${String(selectedDay.month + 1).padStart(2, '0')}-${String(selectedDay.day).padStart(2, '0')}`;
             setFormState((prevState) => ({
@@ -57,22 +56,12 @@ const TransactionModal = ({
                 recurrenceFrequency: editingTransaction.recurrenceFrequency || 'SINGLE',
                 transactionType: editingTransaction.transactionType || 'EXPENSE',
             });
-        } else if (selectedDay && !formState.startDate && !formState.endDate) {
-            // Only set the start and end dates if they are not already set
-            const formattedDate = selectedDay.date?.toISOString().split('T')[0] || '';
-            setFormState((prevState) => ({
-                ...prevState,
-                startDate: formattedDate,
-                endDate: formattedDate,
-            }));
         }
-    }, [selectedDay, editingTransaction, formState.startDate, formState.endDate]);
-    
-    
-    
+    }, [selectedDay, editingTransaction]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
+        console.log(`Input changed: ${name} = ${value}`);
         setFormState((prevState) => ({ ...prevState, [name]: value }));
     };
 
@@ -88,49 +77,80 @@ const TransactionModal = ({
             description,
         } = formState;
     
-        if (!name || !amount || !category || !startDate || !recurrenceFrequency) {
-            alert('Please fill in all the required fields.');
+        console.log('Attempting to save transaction with formState:', formState);
+    
+        // Set default startDate to the selected day if not provided
+        const selectedDate = selectedDay?.date?.toISOString().split('T')[0];
+        const finalStartDate = startDate?.trim() || selectedDate;
+    
+        // Ensure endDate is null for SINGLE recurrence
+        const finalEndDate = recurrenceFrequency === 'SINGLE' ? null : endDate;
+    
+        // Validation for required fields
+        if (
+            !name?.trim() ||
+            isNaN(parseFloat(amount)) ||
+            parseFloat(amount) <= 0 ||
+            !category?.trim() ||
+            !finalStartDate?.trim() ||
+            !recurrenceFrequency?.trim()
+        ) {
+            alert('Please fill in all the required fields with valid values.');
             return;
         }
     
         const transaction = {
-            ...editingTransaction, // Include existing transaction details if editing
+            ...editingTransaction, // Retain existing transaction data when editing
             name,
             amount: parseFloat(amount),
             category,
-            startDate: format(new Date(startDate), 'yyyy-MM-dd'),
-            endDate: endDate ? format(new Date(endDate), 'yyyy-MM-dd') : null,
+            startDate: finalStartDate,
+            endDate: finalEndDate ? format(new Date(finalEndDate), 'yyyy-MM-dd') : null,
             recurrenceFrequency,
             transactionType,
             description,
         };
     
+        console.log('Transaction to save:', transaction);
+    
         try {
             if (editingTransaction) {
-                await onEditTransaction(transaction); // Trigger edit callback
+                // Editing an existing transaction
+                await onEditTransaction(transaction); // Call PUT endpoint
+                console.log('Transaction updated successfully.');
             } else {
-                await onAddTransaction(transaction); // Trigger add callback
+                // Adding a new transaction
+                await onAddTransaction(transaction); // Call POST endpoint
+                console.log('Transaction added successfully.');
             }
-            onClose(); // Close modal after successful operation
+            onClose();
         } catch (error) {
             console.error('Error saving transaction:', error);
         }
     };
+    
 
     const handleDeleteTransaction = async (deleteType) => {
         if (!transactionToDelete) return;
-    
-        await onDeleteTransaction(transactionToDelete.id, deleteType); // Pass deleteType
-        setConfirmationModalVisible(false);
-        setTransactionToDelete(null);
-        await refreshCalendar();
+
+        console.log(`Attempting to delete transaction with ID: ${transactionToDelete.id} and deleteType: ${deleteType}`);
+        console.log(`DeleteType received: ${deleteType}`);
+
+        try {
+            await onDeleteTransaction(transactionToDelete.id, deleteType);
+            console.log('Transaction deleted successfully.');
+            setConfirmationModalVisible(false);
+            setTransactionToDelete(null);
+            await refreshCalendar();
+        } catch (error) {
+            console.error('Error deleting transaction:', error);
+        }
     };
-    
-    
 
     const refreshCalendar = async () => {
         if (selectedDay) {
             const formattedDate = selectedDay.date?.toISOString().split('T')[0];
+            console.log(`Refreshing calendar for date: ${formattedDate}`);
             const updatedTransactions = await fetchAPI(
                 `http://localhost:8080/api/v1/transaction/day/${formattedDate}`
             );
@@ -139,10 +159,10 @@ const TransactionModal = ({
     };
 
     const confirmDeleteTransaction = (transaction) => {
+        console.log('Preparing to delete transaction:', transaction);
         setTransactionToDelete(transaction);
         setConfirmationModalVisible(true);
     };
-    
 
     return (
         <div style={modalOverlayStyle}>
@@ -210,7 +230,14 @@ const TransactionModal = ({
                     <select
                         name="recurrenceFrequency"
                         value={formState.recurrenceFrequency}
-                        onChange={handleInputChange}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            setFormState((prevState) => ({
+                                ...prevState,
+                                recurrenceFrequency: value,
+                                endDate: value === 'SINGLE' ? '' : prevState.endDate, // Clear endDate for SINGLE
+                            }));
+                        }}
                     >
                         <option value="SINGLE">Single</option>
                         <option value="DAILY">Daily</option>
@@ -223,6 +250,8 @@ const TransactionModal = ({
                         name="endDate"
                         value={formState.endDate}
                         onChange={handleInputChange}
+                        disabled={formState.recurrenceFrequency === 'SINGLE'}
+                        placeholder="End Date"
                     />
                 </div>
                 <div style={buttonGroupStyle}>
@@ -249,10 +278,20 @@ const TransactionModal = ({
                                 <div style={buttonGroup}>
                                     <button
                                         style={editButtonStyle}
-                                        onClick={() => onEditTransaction(transaction)}
+                                        onClick={() => {
+                                            setEditingTransaction(transaction); // Set the transaction being edited
+                                            setFormState({
+                                                ...transaction,
+                                                startDate: transaction.startDate,
+                                                endDate: transaction.endDate || transaction.startDate,
+                                                recurrenceFrequency: transaction.recurrenceFrequency || 'SINGLE',
+                                            });
+                                        }}
                                     >
                                         Edit
                                     </button>
+
+
                                     <button
                                         style={deleteButtonStyle}
                                         onClick={() => confirmDeleteTransaction(transaction)}
@@ -276,7 +315,8 @@ const TransactionModal = ({
             )}
         </div>
     );
-}    
+};
+
 
 const scrollableTransactionList = {
     maxHeight: '300px', // Limits the height of the list

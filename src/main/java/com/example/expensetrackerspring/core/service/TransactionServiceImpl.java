@@ -135,31 +135,56 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     @Override
     public Optional<TransactionResponse> updateTransaction(SaveTransactionRequest saveTransactionRequest, Long userId) {
-        Transaction oldTransaction = transactionRepository.findByIdAndUserId(saveTransactionRequest.id(), userId)
+        Transaction existingTransaction = transactionRepository.findByIdAndUserId(saveTransactionRequest.id(), userId)
                 .orElseThrow(() -> new TransactionNotFoundException("Transaction not found or access denied"));
 
-        List<LocalDate> affectedDates = calculateAffectedDates(oldTransaction);
-        for (LocalDate date : affectedDates) {
-            userMonthlySummaryService.updateDailySummary(date, oldTransaction.getUser());
+        boolean isRecurring = existingTransaction.getRecurrenceFrequency() != RecurrenceFrequency.SINGLE;
+
+        if (isRecurring) {
+
+            List<Transaction> occurrences = transactionRepository.findByUserAndName(existingTransaction.getUser(), existingTransaction.getName());
+
+            for (Transaction transaction : occurrences) {
+                updateTransactionDetails(transaction, saveTransactionRequest);
+            }
+
+            updateSummariesForRecurringTransactions(occurrences);
+        } else {
+            updateTransactionDetails(existingTransaction, saveTransactionRequest);
+            updateSummariesForSingleTransaction(existingTransaction);
         }
 
-        oldTransaction.setName(saveTransactionRequest.name());
-        oldTransaction.setStartDate(saveTransactionRequest.startDate());
-        oldTransaction.setEndDate(saveTransactionRequest.endDate());
-        oldTransaction.setCategory(saveTransactionRequest.category());
-        oldTransaction.setDescription(saveTransactionRequest.description());
-        oldTransaction.setAmount(saveTransactionRequest.amount());
-        oldTransaction.setTransactionType(saveTransactionRequest.transactionType());
-        oldTransaction.setRecurrenceFrequency(saveTransactionRequest.recurrenceFrequency());
-        transactionRepository.save(oldTransaction);
-
-        affectedDates = calculateAffectedDates(oldTransaction);
-        for (LocalDate date : affectedDates) {
-            userMonthlySummaryService.updateDailySummary(date, oldTransaction.getUser());
-        }
-
-        return Optional.of(convertTransactionToDto(oldTransaction));
+        return Optional.of(convertTransactionToDto(existingTransaction));
     }
+
+    private void updateTransactionDetails(Transaction transaction, SaveTransactionRequest request) {
+        transaction.setName(request.name());
+        transaction.setDescription(request.description());
+        transaction.setAmount(request.amount());
+        transaction.setCategory(request.category());
+        transaction.setStartDate(request.startDate());
+        transaction.setEndDate(request.endDate());
+        transaction.setTransactionType(request.transactionType());
+        transaction.setRecurrenceFrequency(request.recurrenceFrequency());
+        transactionRepository.save(transaction);
+    }
+
+    private void updateSummariesForRecurringTransactions(List<Transaction> transactions) {
+        transactions.forEach(transaction -> {
+            List<LocalDate> affectedDates = calculateAffectedDates(transaction);
+            for (LocalDate date : affectedDates) {
+                userMonthlySummaryService.updateDailySummary(date, transaction.getUser());
+            }
+        });
+    }
+
+    private void updateSummariesForSingleTransaction(Transaction transaction) {
+        List<LocalDate> affectedDates = calculateAffectedDates(transaction);
+        for (LocalDate date : affectedDates) {
+            userMonthlySummaryService.updateDailySummary(date, transaction.getUser());
+        }
+    }
+
 
 
     @Override
