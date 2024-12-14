@@ -1,428 +1,354 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
+import React, { useState, useEffect } from 'react';
 import TransactionModal from './TransactionModal';
-import SavingsModal from './SavingsModal';
-import { removeAuthToken } from '../utils/storage';
 import fetchAPI from '../utils/apiClient';
 
 const Calendar = () => {
     const [selectedMonth, setSelectedMonth] = useState(new Date());
     const [calendarDays, setCalendarDays] = useState([]);
+    const [editingTransaction, setEditingTransaction] = useState(null);
     const [selectedDay, setSelectedDay] = useState(null);
-    const [transactions, setTransactions] = useState([]);
-    const [editingTransaction, setEditingTransaction] = useState(null); 
-    const [hoverIndex, setHoverIndex] = useState(null);
-    const [menuOpen, setMenuOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
-    const [savings, setSavings] = useState(0);
-    const navigate = useNavigate();
-    const menuRef = useRef(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [hoverIndex, setHoverIndex] = useState(null);
+    const [transactions, setTransactions] = useState([]);
 
-    useEffect(() => {
-        const fetchSavings = async () => {
-            try {
-                const data = await fetchAPI('http://localhost:8080/api/v1/transaction/savings');
-                setSavings(data.savings);
-            } catch (error) {
-                console.error('Error fetching savings:', error);
-            }
-        };
-        fetchSavings();
-    }, []);
-    
-    useEffect(() => {
-        if (savings !== null) { 
-            fetchTransactionsForMonth(selectedMonth);
-        }
-    }, [savings, selectedMonth]);
-
-    const fetchTransactionsForMonth = async (date) => {
-        const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    // Fetch summary for the selected month
+    const fetchMonthlySummary = async () => {
+        const yearMonth = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}`;
         try {
-            const data = await fetchAPI(`http://localhost:8080/api/v1/transaction/month/${yearMonth}`);
-            setTransactions(data);
-            generateCalendar(date.getFullYear(), date.getMonth(), data);
-        } catch (error) {
-            console.error('Error fetching transactions:', error);
+            setLoading(true);
+            const data = await fetchAPI(`http://localhost:8080/api/v1/summary/month/${yearMonth}`);
+            console.log('Fetched summary:', data); // Debugging
+            generateCalendar(data);
+        } catch (err) {
+            console.error('Error fetching monthly summary:', err);
+            setError('Failed to fetch monthly summary');
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleSaveSavings = async (newSavingsValue) => {
-        try {
-            await fetchAPI('http://localhost:8080/api/v1/transaction/savings', 'POST', { savings: newSavingsValue });
-            setSavings(newSavingsValue);
-            fetchTransactionsForMonth(selectedMonth);
-            setIsSavingsModalOpen(false);
-        } catch (error) {
-            console.error('Error saving savings:', error);
-        }
-    };
-
-    const generateCalendar = (year, month, transactionsForMonth = []) => {
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
+    // Generate calendar days
+    const generateCalendar = (summary) => {
+        const daysInMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0).getDate();
         const daysArray = [];
-        let accumulatedSavings = savings;
-    
+
         for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(year, month, day);
-            const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-    
-            const transactionsForDay = transactionsForMonth.filter((transaction) => {
-                const transactionDate = new Date(transaction.startDate);
-                return (
-                    transactionDate.getFullYear() === date.getFullYear() &&
-                    transactionDate.getMonth() === date.getMonth() &&
-                    transactionDate.getDate() === date.getDate()
-                );
-            });
-    
-            const totalExpenses = transactionsForDay
-                .filter((transaction) => transaction.transactionType === 'EXPENSE')
-                .reduce((sum, transaction) => sum + transaction.amount, 0);
-    
-            const totalIncome = transactionsForDay
-                .filter((transaction) => transaction.transactionType === 'INCOME')
-                .reduce((sum, transaction) => sum + transaction.amount, 0);
-    
-            accumulatedSavings = accumulatedSavings - totalExpenses + totalIncome;
-    
+            const date = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), day);
+            const daySummary = summary.find(
+                (s) => new Date(s.date).toDateString() === date.toDateString()
+            ) || { income: 0, expenses: 0, savings: 0 };
+
             daysArray.push({
                 day,
-                dayName,
-                totalExpenses,
-                totalIncome,
-                remainingSavings: accumulatedSavings,
+                dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
+                income: daySummary.income,
+                expenses: daySummary.expenses,
+                savings: daySummary.savings,
             });
         }
-    
+
         setCalendarDays(daysArray);
     };
 
-    const handleDayClick = (date) => {
-        setSelectedDay(date);
-        const transactionsForDay = transactions.filter(
-            (t) => new Date(t.startDate).toDateString() === date.toDateString()
-        );
-        setSelectedDay({ date, transactionsForDay });
-        setIsModalOpen(true);
-    };
-
-    const handleMonthChange = (date) => {
-        setSelectedMonth(date);
-        fetchTransactionsForMonth(date);
-    };
-
-    const handleLogout = () => {
-        removeAuthToken();
-        navigate('/');
-    };
-
-    const toggleMenu = (event) => {
-        event.stopPropagation();
-        setMenuOpen((prev) => !prev);
-    };
-    
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (menuOpen && menuRef.current && !menuRef.current.contains(event.target)) {
-                setMenuOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [menuOpen]);
-
-    const handleChangeSavings = () => {
-        setIsSavingsModalOpen(true);
-    };
-
-    const closeSavingsModal = () => {
-        setIsSavingsModalOpen(false);
-    };
-
-    const handleSaveTransaction = async (transaction) => {
+    // Handle adding a transaction
+    const handleAddTransaction = async (transaction) => {
         try {
-            await fetchAPI('http://localhost:8080/api/v1/transaction', 'POST', transaction);
-            await fetchTransactionsForMonth(selectedMonth);
-            setIsModalOpen(false);
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                console.error('No auth token found.');
+                return;
+            }
+
+            const response = await fetch('http://localhost:8080/api/v1/transaction', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Basic ${token}`, // Use Basic Auth
+                },
+                body: JSON.stringify(transaction),
+            });
+
+            if (response.ok) {
+                console.log('Transaction saved successfully!');
+                await fetchMonthlySummary(); // Refresh calendar
+                setIsModalOpen(false); // Close the modal
+            } else {
+                const errorData = await response.json();
+                console.error('Failed to save transaction:', errorData);
+            }
         } catch (error) {
             console.error('Error saving transaction:', error);
         }
     };
 
-    const handleEditTransaction = async (updatedTransaction) => {
+    const handleEditTransaction = async (transaction) => {
         try {
-            await fetchAPI(`http://localhost:8080/api/v1/transaction/${updatedTransaction.id}`, 'PUT', updatedTransaction);
-            await fetchTransactionsForMonth(selectedMonth); 
-            setEditingTransaction(null);
-            setIsModalOpen(false);
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                console.error('No auth token found.');
+                return;
+            }
+    
+            // Ensure `recurrenceFrequency` is uppercase
+            const transactionToSend = {
+                ...transaction,
+                recurrenceFrequency: transaction.recurrenceFrequency
+                    ? transaction.recurrenceFrequency.toUpperCase()
+                    : "SINGLE", // Default to SINGLE if undefined
+            };
+    
+            const response = await fetch(`http://localhost:8080/api/v1/transaction/${transaction.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Basic ${token}`, // Use Basic Auth
+                },
+                body: JSON.stringify(transactionToSend),
+            });
+    
+            if (response.ok) {
+                console.log('Transaction updated successfully!');
+                const updatedTransactions = await fetchAPI(
+                    `http://localhost:8080/api/v1/transaction/day/${selectedDay.date.toISOString().split('T')[0]}`
+                );
+                setSelectedDay((prevState) => ({
+                    ...prevState,
+                    transactions: updatedTransactions,
+                }));
+                setIsModalOpen(false);
+                setEditingTransaction(null);
+            } else {
+                const errorData = await response.json();
+                console.error('Failed to update transaction:', errorData);
+            }
         } catch (error) {
             console.error('Error updating transaction:', error);
         }
     };
+    
+    
 
     const handleDeleteTransaction = async (transactionId) => {
-        const deleteAll = window.confirm("Delete all occurrences of this recurring transaction?");
         try {
-            await fetchAPI(`http://localhost:8080/api/v1/transaction/${transactionId}?deleteAll=${deleteAll}`, 'DELETE');
-            await fetchTransactionsForMonth(selectedMonth); 
-            setIsModalOpen(false);
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                console.error('No auth token found.');
+                return;
+            }
+
+            const response = await fetch(`http://localhost:8080/api/v1/transaction/${transactionId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Basic ${token}`, // Use Basic Auth
+                },
+            });
+
+            if (response.ok) {
+                console.log('Transaction deleted successfully!');
+                const dayTransactions = await fetchAPI(
+                    `http://localhost:8080/api/v1/transaction/day/${selectedDay.date.toISOString().split('T')[0]}`
+                );
+                setSelectedDay((prevState) => ({ ...prevState, transactions: dayTransactions }));
+            } else {
+                console.error('Failed to delete transaction:', response.statusText);
+            }
         } catch (error) {
             console.error('Error deleting transaction:', error);
         }
     };
+
+
     
+
+    const handleDayClick = async (day) => {
+        const selectedDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), day.day);
+        const formattedDate = selectedDate.toISOString().split('T')[0]; // Format date for API
+
+        try {
+            const dayTransactions = await fetchAPI(`http://localhost:8080/api/v1/transaction/day/${formattedDate}`);
+            setSelectedDay({
+                date: selectedDate,
+                transactions: dayTransactions,
+            });
+            setIsModalOpen(true); // Open the modal
+        } catch (error) {
+            console.error("Error fetching transactions for the day:", error);
+        }
+    };
+
+    
+
+    const handleMonthChange = (year, month) => {
+        const newDate = new Date(year, month, 1);
+        setSelectedMonth(newDate);
+    };
+
+    const isCurrentDay = (day, month, year) => {
+        const today = new Date();
+        return (
+            today.getDate() === day &&
+            today.getMonth() === month &&
+            today.getFullYear() === year
+        );
+    };
+
+    useEffect(() => {
+        fetchMonthlySummary();
+    }, [selectedMonth]);
+
     return (
-        <div className="container mt-5" style={containerStyle}>
-            <header className="d-flex justify-content-between align-items-center p-3 mb-4 border-bottom">
-                <h2 className="text-primary" style={headerStyle}>Expense Tracker</h2>
-                <button
-                    className="btn btn-primary"
-                    onClick={toggleMenu}
-                    style={menuBtnStyle}
-                    ref={menuRef}
+        <div className="calendar-container" style={calendarContainerStyle}>
+            <header style={headerStyle}>
+                <select
+                    style={{ ...dropdownStyle, ...buttonStyle }}
+                    value={selectedMonth.getFullYear()}
+                    onChange={(e) => handleMonthChange(parseInt(e.target.value), selectedMonth.getMonth())}
                 >
-                    ☰
-                </button>
+                    {Array.from({ length: 10 }, (_, i) => {
+                        const year = new Date().getFullYear() - 5 + i;
+                        return (
+                            <option key={year} value={year}>
+                                {year}
+                            </option>
+                        );
+                    })}
+                </select>
+
+                <select
+                    style={{ ...dropdownStyle, ...buttonStyle }}
+                    value={selectedMonth.getMonth()}
+                    onChange={(e) => handleMonthChange(selectedMonth.getFullYear(), parseInt(e.target.value))}
+                >
+                    {Array.from({ length: 12 }, (_, i) => (
+                        <option key={i} value={i}>
+                            {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                        </option>
+                    ))}
+                </select>
             </header>
 
-            {menuOpen && (
-                <div className="menu" ref={menuRef} style={menuStyle}>
-                    <p style={menuHeadingStyle}>Current Savings: £{savings}</p>
-                    <ul style={menuListStyle}>
-                        <li onClick={handleChangeSavings} style={menuItemStyle}>Change Current Savings</li>
-                        <li onClick={handleLogout} style={menuItemStyle}>Logout</li>
-                    </ul>
-                </div>
-            )}
+            <div className="calendar-grid">
+                {calendarDays.map((day, index) => (
+                    <div
+                        key={index}
+                        className="calendar-day"
+                        style={{
+                            ...calendarDayStyle,
+                            ...(isCurrentDay(day.day, selectedMonth.getMonth(), selectedMonth.getFullYear()) && currentDayStyle),
+                            ...(hoverIndex === index && calendarDayHoverStyle),
+                        }}
+                        onMouseEnter={() => setHoverIndex(index)}
+                        onMouseLeave={() => setHoverIndex(null)}
+                        onClick={() => handleDayClick(day)}
+                    >
+                        <div>{day.dayName} {day.day}</div>
+                        <div style={incomeStyle}>Income: £{day.income}</div>
+                        <div style={expenseStyle}>Expenses: £{day.expenses}</div>
+                        <div style={savingsStyle}>Savings: £{day.savings}</div>
+                    </div>
+                ))}
+            </div>
 
-            {isSavingsModalOpen && (
-                <SavingsModal onClose={closeSavingsModal} onSaveSavings={handleSaveSavings} currentSavings={savings} />
-            )}
-
-            {isModalOpen && (
+            {isModalOpen && selectedDay && (
                 <TransactionModal
-                    transactions={selectedDay?.transactionsForDay || []}
-                    selectedDay={selectedDay?.date}
-                    editingTransaction={editingTransaction}
+                    selectedDay={selectedDay}
+                    setSelectedDay={setSelectedDay}
                     onClose={() => {
                         setIsModalOpen(false);
                         setEditingTransaction(null);
                     }}
-                    onAddTransaction={handleSaveTransaction}
+                    onAddTransaction={handleAddTransaction}
                     onEditTransaction={handleEditTransaction}
                     onDeleteTransaction={handleDeleteTransaction}
-                    onEditClick={(transaction) => setEditingTransaction(transaction)}
+                    editingTransaction={editingTransaction}
                 />
             )}
-            
-            <div className="row mb-4" style={monthSelectStyle}>
-                <div className="col-md-6">
-                    <label htmlFor="monthSelect" style={{ fontSize: '1.2em', fontWeight: 'bold' }}>Select Month</label>
-                    <DatePicker
-                        id="monthSelect"
-                        selected={selectedMonth}
-                        onChange={handleMonthChange}
-                        dateFormat="MM/yyyy"
-                        showMonthYearPicker
-                        calendarClassName="custom-calendar"
-                        customInput={
-                            <input
-                                style={{
-                                    fontSize: '1.5rem',
-                                    padding: '10px',
-                                    height: '50px',
-                                    borderRadius: '8px',
-                                    border: '1px solid #ddd',
-                                }}
-                            />
-                        }
-                    />
-                </div>
-            </div>
-
-            <div className="calendar-container" style={calendarContainerStyle}>
-                {calendarDays.map((day, index) => (
-                    <div
-                        key={day.day}
-                        className="calendar-day"
-                        style={index === hoverIndex ? { ...calendarDayStyle, ...calendarDayHoverStyle } : calendarDayStyle}
-                        onMouseEnter={() => setHoverIndex(index)}
-                        onMouseLeave={() => setHoverIndex(null)}
-                        onClick={() => handleDayClick(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), day.day))}
-                    >
-                        <div className="date-header" style={dateHeaderStyle}>
-                            <span style={dayNameStyle}>{day.dayName}</span>
-                            <span style={dateStyle}>{day.day}</span>
-                        </div>
-                        <div style={infoContainerStyle}>
-                            <div style={expenseStyle}>- £{day.totalExpenses}</div>
-                            <div style={incomeStyle}>+ £{day.totalIncome}</div>
-                            <div style={savingsStyle}>Savings Left: £{day.remainingSavings}</div>
-                        </div>
-                    </div>
-                ))}
-            </div>
         </div>
     );
 };
 
-const containerStyle = {
-    width: '100%',
-    maxWidth: '2000px',
-    padding: '40px',
-    margin: '0 auto',
-};
-
-const headerStyle = {
-    fontSize: '2.5rem',
-};
-
-const labelStyle = {
-    fontSize: '1.5rem',
-};
-
-const inputStyle = {
-    fontSize: '1.5rem',
-    padding: '15px',
-};
-
-const menuBtnStyle = {
-    fontSize: '24px',
-    cursor: 'pointer',
-    border: 'none',
-    backgroundColor: '#63ADF2',
-    color: '#fff',
-    padding: '10px',
-    borderRadius: '50%',
-    transition: 'all 0.3s',
-};
-
-const menuStyle = {
-    position: 'absolute',
-    top: '60px',
-    width: '200px',
-    backgroundColor: '#f8f9fa',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    borderRadius: '8px',
-    padding: '10px',
-    zIndex: 10,
-};
-
-const menuHeadingStyle = {
-    fontSize: '16px',
-    fontWeight: 'bold',
-    marginBottom: '10px',
-    textAlign: 'center',
-    color: '#333',
-};
-
-const menuListStyle = {
-    listStyleType: 'none',
-    padding: 0,
-    margin: 0,
-};
-
-const menuItemStyle = {
-    padding: '10px',
-    cursor: 'pointer',
-    textAlign: 'center',
-    color: '#007bff',
-    borderRadius: '5px',
-    backgroundColor: '#e9ecef',
-    marginBottom: '10px',
-    transition: 'background 0.3s',
-};
-
-const monthSelectStyle = {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: '20px',
-    width: '100%',
-};
-
+// Styles
 const calendarContainerStyle = {
     display: 'grid',
-    gridTemplateColumns: 'repeat(7, 1fr)',
-    gap: '10px',
-    padding: '20px',
-    width: '100%',
-    maxWidth: '2000px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '15px',
+    padding: '40px',
     margin: '0 auto',
-    backgroundColor: '#f8f9fa',
-    borderRadius: '10px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+    backgroundColor: '#f0f4f8',
+    borderRadius: '15px',
+    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
+    maxWidth: '95vw',
 };
 
 const calendarDayStyle = {
-    border: '1px solid #e0e0e0',
+    border: '2px solid #e0e0e0',
     padding: '20px',
-    borderRadius: '8px',
-    height: '220px',
+    borderRadius: '10px',
+    height: '180px',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
     textAlign: 'center',
     backgroundColor: '#ffffff',
-    transition: 'all 0.3s ease-in-out',
     cursor: 'pointer',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    transition: 'all 0.3s ease-in-out',
 };
 
 const calendarDayHoverStyle = {
-    backgroundColor: '#d4e9ff',
-    color: '#000000',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
-    transform: 'scale(1.03)',
+    backgroundColor: '#cfe2f3',
+    transform: 'scale(1.05)',
+    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
 };
 
-const dateHeaderStyle = {
+const headerStyle = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: '20px',
+    fontSize: '1.5rem',
     fontWeight: 'bold',
-    fontSize: '1.4rem',
-    color: '#0056b3',
-    marginBottom: '10px',
 };
 
-const dayNameStyle = {
-    fontSize: '1.2rem',
-    color: '#0056b3',
+const buttonStyle = {
+    padding: '10px 15px',
+    backgroundColor: '#4CAF50', // Green color
+    color: 'white',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    transition: 'background 0.3s',
 };
 
-const dateStyle = {
-    fontSize: '2rem',
-    fontWeight: 'bold',
-    color: '#0056b3',
+const dropdownStyle = {
+    padding: '10px',
+    fontSize: '1rem',
+    borderRadius: '5px',
+    border: '1px solid #ddd',
 };
 
-const infoContainerStyle = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    fontSize: '1.2rem',
-    fontWeight: '1000',
-};
 
-const expenseStyle = {
-    color: '#d9534f',
+const currentDayStyle = {
+    backgroundColor: '#ffefc3',
+    border: '2px solid #ffc107',
 };
 
 const incomeStyle = {
-    color: '#5cb85c',
+    color: '#28a745',
+    fontWeight: 'bold',
+};
+
+const expenseStyle = {
+    color: '#dc3545',
+    fontWeight: 'bold',
 };
 
 const savingsStyle = {
-    color: '#337ab7',
+    color: '#007bff',
     fontWeight: 'bold',
-    marginTop: '8px',
 };
 
 export default Calendar;
