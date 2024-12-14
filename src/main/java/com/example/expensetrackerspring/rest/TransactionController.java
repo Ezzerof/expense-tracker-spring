@@ -89,18 +89,24 @@ public class TransactionController {
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteTransaction(
             @PathVariable Long id,
-            @RequestParam(required = false, defaultValue = "SINGLE") String deleteType,
+            @RequestParam(required = false) String deleteType,
             @AuthenticationPrincipal User user
     ) {
+        logger.info("Delete request received: ID = {}, deleteType = {}, User = {}", id, deleteType, user.getUsername());
+
+        if (deleteType == null || (!"ALL".equalsIgnoreCase(deleteType) && !"SINGLE".equalsIgnoreCase(deleteType))) {
+            throw new IllegalArgumentException("Invalid or missing deleteType. Expected 'ALL' or 'SINGLE'.");
+        }
+
         if ("ALL".equalsIgnoreCase(deleteType)) {
             transactionService.deleteAllOccurrences(id, user.getId());
         } else {
             transactionService.deleteTransaction(new RemoveTransactionRequest(id), user.getId());
         }
+
         logger.info("Transaction {} deleted successfully by user {}", id, user.getUsername());
         return ResponseEntity.ok("Transaction deleted successfully");
     }
-
 
 }
 

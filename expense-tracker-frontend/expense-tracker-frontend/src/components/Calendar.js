@@ -130,28 +130,31 @@ const Calendar = () => {
     
     
 
-    const handleDeleteTransaction = async (transactionId) => {
+    const handleDeleteTransaction = async (transactionId, deleteType) => {
         try {
             const token = localStorage.getItem('authToken');
             if (!token) {
                 console.error('No auth token found.');
                 return;
             }
-
-            const response = await fetch(`http://localhost:8080/api/v1/transaction/${transactionId}`, {
+    
+            const requestUrl = `http://localhost:8080/api/v1/transaction/${transactionId}?deleteType=${deleteType}`;
+            const response = await fetch(requestUrl, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Basic ${token}`, // Use Basic Auth
                 },
             });
-
+    
             if (response.ok) {
                 console.log('Transaction deleted successfully!');
                 const dayTransactions = await fetchAPI(
                     `http://localhost:8080/api/v1/transaction/day/${selectedDay.date.toISOString().split('T')[0]}`
                 );
                 setSelectedDay((prevState) => ({ ...prevState, transactions: dayTransactions }));
+                await fetchMonthlySummary(); // Refresh calendar
+                setIsModalOpen(false); // Close the modal
             } else {
                 console.error('Failed to delete transaction:', response.statusText);
             }
@@ -159,6 +162,7 @@ const Calendar = () => {
             console.error('Error deleting transaction:', error);
         }
     };
+    
 
 
     
