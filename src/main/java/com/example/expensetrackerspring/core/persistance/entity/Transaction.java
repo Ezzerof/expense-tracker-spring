@@ -2,6 +2,7 @@ package com.example.expensetrackerspring.core.persistance.entity;
 
 import com.example.expensetrackerspring.core.RecurrenceFrequency;
 import com.example.expensetrackerspring.core.TransactionType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -39,8 +40,10 @@ public class Transaction {
     private BigDecimal amount;
 
     @NotNull(message = "Start date cannot be null")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate startDate;
 
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate endDate;
 
     @Enumerated(EnumType.STRING)

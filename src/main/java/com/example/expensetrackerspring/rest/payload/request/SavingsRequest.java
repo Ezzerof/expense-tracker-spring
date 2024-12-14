@@ -2,5 +2,5 @@ package com.example.expensetrackerspring.rest.payload.request;
 
 import java.math.BigDecimal;
 
-public record SavingsRequest(BigDecimal savings) {
+public record SavingsRequest(BigDecimal savings, String date) {
 }

@@ -29,9 +29,9 @@ public interface TransactionService {
 
     LocalDate getNextOccurrenceDate(LocalDate currentDate, RecurrenceFrequency frequency);
 
-    List<TransactionResponse> getTransactionsForMonth(Long id, String yearMonth);
+    List<TransactionResponse> getTransactionsForMonth(Long userId, String yearMonth);
 
-    List<TransactionResponse> getTransactionsForDay(Long id, LocalDate parsedDate);
+    List<TransactionResponse> getTransactionsForDay(Long userId, LocalDate date);
 
-    void deleteAllMatchingRecurringTransactions(Long id, Long id1);
+    void deleteAllOccurrences(Long id, Long id1);
 }

@@ -5,5 +5,9 @@ public enum RecurrenceFrequency {
     DAILY,
     WEEKLY,
     MONTHLY,
-    YEARLY
+    YEARLY;
+
+    public static RecurrenceFrequency fromString(String frequency) {
+        return RecurrenceFrequency.valueOf(frequency.toUpperCase());
+    }
 }
