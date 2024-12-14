@@ -1,24 +1,24 @@
 import React, { useState } from 'react';
 
 const SavingsModal = ({ onClose, onSaveSavings, currentSavings }) => {
-    const [newSavings, setNewSavings] = useState(currentSavings);
+    const [additionalSavings, setAdditionalSavings] = useState(0); 
 
     const handleSave = () => {
-        if (!isNaN(newSavings)) {
-            onSaveSavings(parseFloat(newSavings));
+        if (!isNaN(additionalSavings)) {
+            onSaveSavings(parseFloat(additionalSavings)); 
         }
     };
 
     return (
         <div style={modalOverlayStyle}>
             <div style={modalStyle}>
-                <h5>Update Savings</h5>
+                <h5>Add Savings Left</h5>
                 <input
                     type="number"
                     style={inputStyle}
-                    placeholder="Enter new savings amount"
-                    value={newSavings}
-                    onChange={(e) => setNewSavings(e.target.value)}
+                    placeholder="Enter additional savings"
+                    value={additionalSavings}
+                    onChange={(e) => setAdditionalSavings(e.target.value)}
                 />
                 <div style={buttonContainerStyle}>
                     <button style={closeButtonStyle} onClick={onClose}>Close</button>
@@ -28,6 +28,7 @@ const SavingsModal = ({ onClose, onSaveSavings, currentSavings }) => {
         </div>
     );
 };
+
 
 const modalOverlayStyle = {
     position: 'fixed',
