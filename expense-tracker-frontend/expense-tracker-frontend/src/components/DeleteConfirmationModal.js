@@ -95,7 +95,7 @@ const deleteModalStyle = {
     backgroundColor: '#fff',
     padding: '20px',
     borderRadius: '8px',
-    width: '400px',
+    width: '600px',
     textAlign: 'center',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
     zIndex: 1200,

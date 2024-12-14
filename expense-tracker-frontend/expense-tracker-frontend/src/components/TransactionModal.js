@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import fetchAPI from '../utils/apiClient';
 import { format } from 'date-fns';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 
 const TransactionModal = ({
@@ -24,6 +25,8 @@ const TransactionModal = ({
     });
 
     const [showTransactions, setShowTransactions] = useState(false);
+    const [confirmationModalVisible, setConfirmationModalVisible] = useState(false);
+    const [transactionToDelete, setTransactionToDelete] = useState(null);
 
     useEffect(() => {
         if (selectedDay && selectedDay instanceof Date) {
@@ -112,6 +115,32 @@ const TransactionModal = ({
         } catch (error) {
             console.error('Error saving transaction:', error);
         }
+    };
+
+    const handleDeleteTransaction = async (deleteType) => {
+        if (!transactionToDelete) return;
+    
+        await onDeleteTransaction(transactionToDelete.id, deleteType); // Pass deleteType
+        setConfirmationModalVisible(false);
+        setTransactionToDelete(null);
+        await refreshCalendar();
+    };
+    
+    
+
+    const refreshCalendar = async () => {
+        if (selectedDay) {
+            const formattedDate = selectedDay.date?.toISOString().split('T')[0];
+            const updatedTransactions = await fetchAPI(
+                `http://localhost:8080/api/v1/transaction/day/${formattedDate}`
+            );
+            setSelectedDay((prevState) => ({ ...prevState, transactions: updatedTransactions }));
+        }
+    };
+
+    const confirmDeleteTransaction = (transaction) => {
+        setTransactionToDelete(transaction);
+        setConfirmationModalVisible(true);
     };
     
 
@@ -226,7 +255,7 @@ const TransactionModal = ({
                                     </button>
                                     <button
                                         style={deleteButtonStyle}
-                                        onClick={() => onDeleteTransaction(transaction.id)}
+                                        onClick={() => confirmDeleteTransaction(transaction)}
                                     >
                                         Delete
                                     </button>
@@ -238,6 +267,13 @@ const TransactionModal = ({
                     )}
                 </div>
             </div>
+            {confirmationModalVisible && transactionToDelete && (
+                <DeleteConfirmationModal
+                    onClose={() => setConfirmationModalVisible(false)}
+                    onConfirm={(deleteType) => handleDeleteTransaction(deleteType)}
+                    transaction={transactionToDelete}
+                />
+            )}
         </div>
     );
 }    
