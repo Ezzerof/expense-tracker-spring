@@ -91,25 +91,18 @@ const Calendar = () => {
                 return;
             }
     
-            // Ensure `recurrenceFrequency` is uppercase
-            const transactionToSend = {
-                ...transaction,
-                recurrenceFrequency: transaction.recurrenceFrequency
-                    ? transaction.recurrenceFrequency.toUpperCase()
-                    : "SINGLE", // Default to SINGLE if undefined
-            };
-    
             const response = await fetch(`http://localhost:8080/api/v1/transaction/${transaction.id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Basic ${token}`, // Use Basic Auth
+                    Authorization: `Basic ${token}`,
                 },
-                body: JSON.stringify(transactionToSend),
+                body: JSON.stringify(transaction),
             });
     
             if (response.ok) {
                 console.log('Transaction updated successfully!');
+                // Refresh transactions for the selected day
                 const updatedTransactions = await fetchAPI(
                     `http://localhost:8080/api/v1/transaction/day/${selectedDay.date.toISOString().split('T')[0]}`
                 );
@@ -117,16 +110,16 @@ const Calendar = () => {
                     ...prevState,
                     transactions: updatedTransactions,
                 }));
-                setIsModalOpen(false);
-                setEditingTransaction(null);
+                await fetchMonthlySummary(); // Refresh calendar
+                setIsModalOpen(false); // Close the modal
             } else {
-                const errorData = await response.json();
-                console.error('Failed to update transaction:', errorData);
+                console.error('Failed to update transaction:', response.statusText);
             }
         } catch (error) {
             console.error('Error updating transaction:', error);
         }
     };
+    
     
     
 
@@ -135,6 +128,8 @@ const Calendar = () => {
             const token = localStorage.getItem('authToken');
             if (!token) {
                 console.error('No auth token found.');
+                
+                
                 return;
             }
     
@@ -268,7 +263,9 @@ const Calendar = () => {
                     onEditTransaction={handleEditTransaction}
                     onDeleteTransaction={handleDeleteTransaction}
                     editingTransaction={editingTransaction}
+                    setEditingTransaction={setEditingTransaction} // Pass setter function
                 />
+            
             )}
         </div>
     );
