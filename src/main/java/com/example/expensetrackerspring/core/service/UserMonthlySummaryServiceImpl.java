@@ -31,6 +31,9 @@ public class UserMonthlySummaryServiceImpl implements UserMonthlySummaryService 
     public void updateDailySummary(LocalDate date, User user) {
         YearMonth month = YearMonth.from(date);
 
+        LocalDate lastDayOfPreviousMonth = month.minusMonths(1).atEndOfMonth();
+        BigDecimal previousMonthSavings = getPreviousDaySavings(user, lastDayOfPreviousMonth);
+
         for (LocalDate currentDay = month.atDay(1); !currentDay.isAfter(month.atEndOfMonth()); currentDay = currentDay.plusDays(1)) {
             LocalDate finalCurrentDay = currentDay;
             userMonthlySummaryRepository.findByUserAndDate(user, currentDay)
@@ -40,18 +43,18 @@ public class UserMonthlySummaryServiceImpl implements UserMonthlySummaryService 
                         newSummary.setDate(finalCurrentDay);
                         newSummary.setIncome(BigDecimal.ZERO);
                         newSummary.setExpenses(BigDecimal.ZERO);
-                        newSummary.setSavings(BigDecimal.ZERO);
+                        newSummary.setSavings(finalCurrentDay.equals(month.atDay(1)) ? previousMonthSavings : BigDecimal.ZERO);
                         return userMonthlySummaryRepository.save(newSummary);
                     });
         }
 
         List<UserMonthlySummary> summaries = userMonthlySummaryRepository.findByUserAndDateBetween(
                 user,
-                date,
+                month.atDay(1),
                 month.atEndOfMonth()
         );
 
-        BigDecimal previousDaySavings = getPreviousDaySavings(user, date);
+        BigDecimal previousDaySavings = previousMonthSavings;
 
         for (UserMonthlySummary summary : summaries) {
             List<Transaction> transactions = transactionRepository.findByUserAndDate(user, summary.getDate());
@@ -76,15 +79,18 @@ public class UserMonthlySummaryServiceImpl implements UserMonthlySummaryService 
         }
     }
 
+
     @Override
     public List<UserMonthlySummary> getSummaryForMonth(User user, String yearMonth) {
         YearMonth month = YearMonth.parse(yearMonth);
         LocalDate startOfMonth = month.atDay(1);
         LocalDate endOfMonth = month.atEndOfMonth();
-        System.out.println("Fetching summary for user: " + user.getId() + ", YearMonth: " + yearMonth);
+
+        updateDailySummary(startOfMonth, user);
 
         return userMonthlySummaryRepository.findByUserAndDateBetween(user, startOfMonth, endOfMonth);
     }
+
 
     @Override
     public UserMonthlySummary getSummaryForDay(LocalDate date, User user) {
