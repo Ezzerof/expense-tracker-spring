@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import TransactionModal from './TransactionModal';
 import fetchAPI from '../utils/apiClient';
+import { removeAuthToken } from '../utils/storage';
+import { useNavigate } from 'react-router-dom';
+
+
 
 const Calendar = () => {
     const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -12,6 +16,8 @@ const Calendar = () => {
     const [error, setError] = useState(null);
     const [hoverIndex, setHoverIndex] = useState(null);
     const [transactions, setTransactions] = useState([]);
+    const navigate = useNavigate();
+
 
     // Fetch summary for the selected month
     const fetchMonthlySummary = async () => {
@@ -157,9 +163,12 @@ const Calendar = () => {
             console.error('Error deleting transaction:', error);
         }
     };
-    
 
-
+    const handleLogout = () => {
+        removeAuthToken(); 
+        alert('You have been logged out.');
+        navigate('/'); 
+    };
     
 
     const handleDayClick = async (day) => {
@@ -172,7 +181,7 @@ const Calendar = () => {
                 date: selectedDate,
                 transactions: dayTransactions,
             });
-            setIsModalOpen(true); // Open the modal
+            setIsModalOpen(true);
         } catch (error) {
             console.error("Error fetching transactions for the day:", error);
         }
@@ -227,6 +236,9 @@ const Calendar = () => {
                         </option>
                     ))}
                 </select>
+                <button style={logoutButtonStyle} onClick={handleLogout}>
+                    Logout
+                </button>
             </header>
 
             <div className="calendar-grid" style={calendarGridStyle}>
@@ -313,6 +325,17 @@ const calendarDayStyle = {
     transition: 'transform 0.2s ease, background-color 0.3s ease', 
     boxSizing: 'border-box',
     cursor: 'pointer',
+};
+
+const logoutButtonStyle = {
+    padding: '10px 20px',
+    backgroundColor: '#dc3545',
+    color: 'white',
+    border: 'none',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    fontSize: '1.2rem',
+    transition: 'background 0.3s ease',
 };
 
 const calendarDayHoverStyle = {
