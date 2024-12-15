@@ -229,7 +229,7 @@ const Calendar = () => {
                 </select>
             </header>
 
-            <div className="calendar-grid">
+            <div className="calendar-grid" style={calendarGridStyle}>
                 {calendarDays.map((day, index) => (
                     <div
                         key={index}
@@ -243,7 +243,10 @@ const Calendar = () => {
                         onMouseLeave={() => setHoverIndex(null)}
                         onClick={() => handleDayClick(day)}
                     >
-                        <div>{day.dayName} {day.day}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                            <span style={dayNumberStyle}>{day.day}</span>
+                            <span style={dayNameStyle}>{day.dayName}</span>
+                        </div>
                         <div style={incomeStyle}>Income: £{day.income}</div>
                         <div style={expenseStyle}>Expenses: £{day.expenses}</div>
                         <div style={savingsStyle}>Savings: £{day.savings}</div>
@@ -263,91 +266,125 @@ const Calendar = () => {
                     onEditTransaction={handleEditTransaction}
                     onDeleteTransaction={handleDeleteTransaction}
                     editingTransaction={editingTransaction}
-                    setEditingTransaction={setEditingTransaction} // Pass setter function
+                    setEditingTransaction={setEditingTransaction} 
                 />
             
             )}
         </div>
     );
+    
 };
 
 // Styles
 const calendarContainerStyle = {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '15px',
-    padding: '40px',
-    margin: '0 auto',
+    gridTemplateRows: 'auto 1fr', 
+    gap: '20px',
+    padding: '0', 
+    margin: '0',
     backgroundColor: '#f0f4f8',
-    borderRadius: '15px',
-    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
-    maxWidth: '95vw',
+    width: '100vw', 
+    height: '100vh', 
+    boxSizing: 'border-box', 
+};
+
+const calendarGridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(7, 1fr)', 
+    gap: '10px',
+    width: '100%', 
+    height: '100%', 
+    boxSizing: 'border-box', 
+    padding: '10px', 
 };
 
 const calendarDayStyle = {
-    border: '2px solid #e0e0e0',
-    padding: '20px',
-    borderRadius: '10px',
-    height: '180px',
+    border: '2px solid #ccc', 
+    borderRadius: '15px', 
+    padding: '50px', 
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
+    alignItems: 'center',
     textAlign: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f9f9f9', 
+    fontSize: '1rem',
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+    transition: 'transform 0.2s ease, background-color 0.3s ease', 
+    boxSizing: 'border-box',
     cursor: 'pointer',
-    transition: 'all 0.3s ease-in-out',
 };
 
 const calendarDayHoverStyle = {
-    backgroundColor: '#cfe2f3',
-    transform: 'scale(1.05)',
-    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
+    backgroundColor: '#e3f2fd', 
+    transform: 'scale(1.05)', 
+    boxShadow: '0 6px 12px rgba(0, 0, 0, 0.2)', 
 };
 
 const headerStyle = {
     display: 'flex',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: '20px',
-    fontSize: '1.5rem',
-    fontWeight: 'bold',
+    gap: '10px',
+    padding: '10px',
 };
 
 const buttonStyle = {
-    padding: '10px 15px',
-    backgroundColor: '#4CAF50', // Green color
+    padding: '15px 20px',
+    backgroundColor: '#4CAF50', 
     color: 'white',
     border: 'none',
-    borderRadius: '5px',
+    borderRadius: '10px',
     cursor: 'pointer',
-    fontSize: '1rem',
+    fontSize: '1.2rem',
     transition: 'background 0.3s',
+    width: 'auto',
 };
 
 const dropdownStyle = {
-    padding: '10px',
-    fontSize: '1rem',
-    borderRadius: '5px',
-    border: '1px solid #ddd',
+    padding: '15px',
+    fontSize: '1.2rem',
+    borderRadius: '10px',
+    border: '2px solid #ddd',
+    width: '220px',
+    cursor: 'pointer',
 };
 
-
 const currentDayStyle = {
-    backgroundColor: '#ffefc3',
-    border: '2px solid #ffc107',
+    backgroundColor: '#fff3cd', 
+    border: '2px solid #ffc107', 
+    fontWeight: 'bold',
+    color: '#856404', 
+};
+
+const dayNumberStyle = {
+    fontSize: '3rem',
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    alignSelf: 'flex-start',
+};
+
+const dayNameStyle = {
+    fontSize: '2rem',
+    fontWeight: 'bold',
+    color: '#1976d2',
+    alignSelf: 'flex-end',
 };
 
 const incomeStyle = {
-    color: '#28a745',
+    fontSize: '1.5rem',
+    color: '#28a745', 
     fontWeight: 'bold',
 };
 
 const expenseStyle = {
-    color: '#dc3545',
+    fontSize: '1.5rem',
+    color: '#dc3545', 
     fontWeight: 'bold',
 };
 
 const savingsStyle = {
+    fontSize: '1.5rem',
     color: '#007bff',
     fontWeight: 'bold',
 };
