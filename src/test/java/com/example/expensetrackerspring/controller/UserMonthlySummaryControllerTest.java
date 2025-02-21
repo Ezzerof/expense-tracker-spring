@@ -39,7 +39,6 @@ class UserMonthlySummaryControllerTest {
         dummySummary = new UserMonthlySummary();
         dummySummary.setUser(dummyUser);
         dummySummary.setDate(LocalDate.of(2025, 2, 21));
-        // Optionally set additional fields (income, expenses, savings) if required
     }
 
     @Test
